@@ -1,0 +1,6 @@
+github.com/kyoushuu/go-poppler v0.0.0-20221116194120-393d8e46e371 h1:NBgS4rFPI5Wehrn4UZU9nBvPLUDbP19mUF2FLdZxe8A=
+github.com/kyoushuu/go-poppler v0.0.0-20221116194120-393d8e46e371/go.mod h1:esIMW3ziqUwOfDe9kYmNNK6a/FTOmUtpVOI27/QK49U=
+github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=
+github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
+github.com/ungerik/go-cairo v0.0.0-20220815093914-e24bd4259cef h1:zpOobzu7pmkVFs/XNuhJvxHCdQrGWxybcfVDabi//B4=
+github.com/ungerik/go-cairo v0.0.0-20220815093914-e24bd4259cef/go.mod h1:yLTJg56omDJ+JVxZ5whpCrZgQdaSs+OBdFa+X6ViJcI=
