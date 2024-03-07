@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"pdf-to-text/internal/parser"
+	"pdf-to-text/internal/qif"
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "field `number` should by unique or empty", http.StatusBadRequest)
 		return
 	}
-	password := number[0]
+	// password := number[0]
 
 	fileHeader := files[0]
 	log.Printf("received upload file %s of size %d\n", fileHeader.Filename, fileHeader.Size)
@@ -64,11 +65,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	csv, err := parser.Parse(fileHeader.Filename, file, password)
+	csv, err := qif.ParseCSV(file)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("could not parse %s: %s", fileHeader.Filename, err), http.StatusBadRequest)
 		return
 	}
+
+	// csv, err := parser.Parse(fileHeader.Filename, file, password)
+	// if err != nil {
+	// 	http.Error(w, fmt.Sprintf("could not parse %s: %s", fileHeader.Filename, err), http.StatusBadRequest)
+	// 	return
+	// }
 
 	out, err := io.ReadAll(csv)
 	if err != nil {
