@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 1MB
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB
 
 func main() {
 	log.SetFlags(0)

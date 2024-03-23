@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>pdf2csv</title>
+</head>
+
+<body>
+  <form id="form" enctype="multipart/form-data" action="/upload" method="POST">
+    <input class="input file-input" type="file" name="file" accept="application/pdf,text/csv" /><br />
+    <label for="number">4 dígitos cartão</label>
+    <input id="number" type="text" maxlength="4" name="number" size="4" /><br />
+    <button class="button" type="submit">Submit</button>
+  </form>
+</body>
+
+</html>

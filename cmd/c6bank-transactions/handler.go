@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"log"
@@ -9,13 +10,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pdf-to-text/internal/parser"
-	"pdf-to-text/internal/qif"
+	"git.home/c6bank-transactions/internal/parser"
+	"git.home/c6bank-transactions/internal/qif"
 )
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+//go:embed index.html
+var indexHTML []byte
+
+func indexHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
-	http.ServeFile(w, r, "index.html")
+	_, err := w.Write(indexHTML)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,13 +50,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "field `number` should by unique or empty", http.StatusBadRequest)
 		return
 	}
-	// password := number[0]
 
 	fileHeader := files[0]
 	log.Printf("received upload file %s of size %d\n", fileHeader.Filename, fileHeader.Size)
 
 	if fileHeader.Size > MAX_UPLOAD_SIZE {
-		http.Error(w, fmt.Sprintf("The uploaded image is too big: %s. Please use an image less than 1MB in size", fileHeader.Filename), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("The uploaded image is too big: %s. Please use an image less than 10MB in size", fileHeader.Filename), http.StatusBadRequest)
 		return
 	}
 
@@ -71,7 +77,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// csv, err := parser.Parse(fileHeader.Filename, file, password)
+	// csv, err := parser.Parse(fileHeader.Filename, file, number[0])
 	// if err != nil {
 	// 	http.Error(w, fmt.Sprintf("could not parse %s: %s", fileHeader.Filename, err), http.StatusBadRequest)
 	// 	return
