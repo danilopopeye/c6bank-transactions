@@ -1,98 +1,52 @@
 package qif
 
-// https://github.com/rockstardevs/csvtoqfx
-
 import (
 	"bytes"
-	"encoding/csv"
 	"io"
 	"text/template"
+
+	"github.com/segmentio/fasthash/fnv1a"
 )
 
-// !Type:Bank
-// D12/19/18
-// PCOUNTY WASTE 12/18 PURCHASE 804-8439288 VA
-// T-25.00
-// C*
-// ^
+type Transaction struct {
+	ID       uint64
+	Date     string
+	Amount   string
+	Payee    string
+	Memo     string
+	Category string
+}
+
+type QIFType string
 
 const (
-	dateFormat = "01/02/2006"
-	headerFmt  = `!Account
-N{{.Name}}
-T{{.Type}}
-^
-!Type:{{.Type}}`
+	BankType       QIFType = "Bank"  // !Type:Bank  | Cash Flow: Checking & Savings Account
+	CreditCardType QIFType = "CCard" // !Type:CCard | Cash Flow: Credit Card Account
+	dateFormat             = "02/01/2006"
 
 	// txFmt intentionally starts with a newline
 	txFmt = `
+N{{.ID}}
 D{{.Date}}
 P{{.Payee}}
 T{{.Amount}}
 {{- if .Memo}}
 M{{.Memo}}
 {{- end}}
-N{{.ID}}
 ^`
 )
 
-var (
-	headerTemplate = template.Must(template.New("headerFmt").Parse(headerFmt))
-	txTemplate     = template.Must(template.New("txFmt").Parse(txFmt))
-)
+var txTemplate = template.Must(template.New("txFmt").Parse(txFmt))
 
-type header struct {
-	Name string
-	Type string
-}
-
-type transaction struct {
-	ID     string // - N{{.ID}}
-	Date   string
-	Payee  string
-	Memo   string
-	Amount string
-}
-
-// !Type:Bank  | Cash Flow: Checking & Savings Account
-// !Type:CCard | Cash Flow: Credit Card Account
-
-func ParseCSV(file io.Reader) (io.Reader, error) {
+func Parse(qtype QIFType, transactions []Transaction) (io.Reader, error) {
 	buff := new(bytes.Buffer)
-	buff.WriteString("!Type:CCard")
+	buff.WriteString("!Type:")
+	buff.WriteString(string(qtype))
 
-	// hdr := header{Name: "cartão de crédito", Type: "CCard"}
-	// if err := headerTemplate.Execute(buff, hdr); err != nil {
-	// 	return nil, err
-	// }
-
-	csvReader := csv.NewReader(file)
-	csvReader.Comma = ';'
-	_, err := csvReader.Read() // header
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		// 0     1            2             3          4          5        6               7                8
-		// Data; Nome Cartão; Final Cartão; Categoria; Descrição; Parcela; Valor (em US$); Cotação (em R$); Valor (em R$)
-		record, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-
-		tx := transaction{
-			ID:     record[0] + record[2] + record[4] + record[5] + record[8],
-			Date:   record[0],
-			Payee:  record[4],
-			Amount: record[8],
-		}
-
-		if record[5] != "Única" {
-			tx.Memo = record[5]
-		}
+	for _, tx := range transactions {
+		tx.ID = fnv1a.HashString64(
+			tx.Date + tx.Payee + tx.Amount,
+		)
 
 		if err := txTemplate.Execute(buff, tx); err != nil {
 			return nil, err
@@ -101,3 +55,17 @@ func ParseCSV(file io.Reader) (io.Reader, error) {
 
 	return buff, nil
 }
+
+// Field  Indicator Explanation
+// D      Date
+// T      Amount
+// C      Cleared status
+// N      Num (check or reference number)
+// P      Payee
+// M      Memo
+// A      Address (up to five lines; the sixth line is an optional message)
+// L      Category (Category/Subcategory/Transfer/Class)
+// S      Category in split (Category/Transfer/Class)
+// E      Memo in split
+// $      Dollar amount of split
+// ^      End of the entry
