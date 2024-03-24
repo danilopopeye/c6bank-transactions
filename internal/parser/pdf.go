@@ -3,67 +3,73 @@ package parser
 import (
 	"bufio"
 	"bytes"
-	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
-	"os/exec"
-	"strings"
+	"regexp"
+
+	"github.com/ledongthuc/pdf"
 )
 
-func scanPDFRows(file io.Reader, pass string, csvFile *csv.Writer) error {
-	content, err := readPDF(file, pass)
+const lf = "\n"
+
+// 0    1    2     3    4     5
+// line date payee memo value type
+var transactionRegexp = regexp.MustCompile(`(?P<date>[0-9/]{10})\s+(?P<payee>[A-Z0-9., ]+)\s*-?\s*(?P<memo>.*)\s+[0-9]{12}\s+(?P<value>[0-9.]+,[0-9]{2})\s+(?P<type>[CD])`)
+
+func scanPDFRows(file io.ReaderAt, pass string, size int64) ([]line, error) {
+	content, err := readPDF(file, size, pass)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	scanner := bufio.NewScanner(bytes.NewBuffer(content))
+	var lines []line
+	scanner := bufio.NewScanner(content)
 
 	for scanner.Scan() {
-		line := transactionRegexp.FindStringSubmatch(scanner.Text())
-		if len(line) != 7 {
+		record := transactionRegexp.FindStringSubmatch(scanner.Text())
+		if len(record) != 6 {
 			continue
 		}
 
-		var inflow, outflow string
-		date, payee, memo, cd, amount := line[1], strings.TrimSpace(line[2]), strings.TrimSpace(line[3]), line[6], line[5]
-
-		switch cd {
-		case "C":
-			inflow = amount
-		case "D":
-			outflow = amount
-		default:
-			return fmt.Errorf("wrong type of transaction: %s -- %s", cd, line)
+		if record[5] == "D" {
+			record[4] = fmt.Sprintf("-%s", record[4])
 		}
 
-		if err := csvFile.Write([]string{date, payee, memo, outflow, inflow}); err != nil {
-			return err
-		}
+		lines = append(lines, line{record[1], record[2], record[3], record[4]})
 	}
 
-	return nil
+	return lines, nil
 }
 
-func readPDF(file io.Reader, pass string) ([]byte, error) {
-	cmd := exec.Command("pdftotext", "-layout", "-upw", pass, "-", "/dev/stdout")
-
-	stdin, err := cmd.StdinPipe()
+func readPDF(file io.ReaderAt, size int64, pass string) (io.Reader, error) {
+	reader, err := pdf.NewReaderEncrypted(file, size, func() string { return pass })
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err = io.Copy(stdin, file); err != nil {
-		return nil, err
+	buff := new(bytes.Buffer)
+	totalPage := reader.NumPage()
+
+	for pageIndex := 1; pageIndex <= totalPage; pageIndex++ {
+		p := reader.Page(pageIndex)
+		if p.V.IsNull() {
+			continue
+		}
+
+		rows, err := p.GetTextByRow()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, row := range rows {
+			for _, word := range row.Content {
+				buff.WriteString(word.S)
+				buff.WriteString(" ")
+			}
+
+			buff.WriteString(lf)
+		}
 	}
 
-	stdin.Close()
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Printf("coud not parse pdf: %s - %s", bytes.TrimSpace(out), err)
-		return nil, fmt.Errorf("%s", bytes.TrimSpace(out))
-	}
-
-	return out, err
+	return buff, nil
 }

@@ -1,38 +1,31 @@
 package parser
 
 import (
-	"bytes"
-	"encoding/csv"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"path/filepath"
-	"regexp"
-	"strings"
 
-	"github.com/shopspring/decimal"
+	"git.home/c6bank-transactions/internal/qif"
 )
 
-var (
-	csvHeaders        = []string{"Date", "Payee", "Memo", "Outflow", "Inflow"}
-	transactionRegexp = regexp.MustCompile(`(?P<date>[0-9/]{10}) (?P<payee>[A-Z0-9., ]+)-?(?P<memo>.*)\s+(?P<doc>[0-9]{12})\s+(?P<value>[0-9.]+,[0-9]{2})\s+(?P<type>[CD])`)
-)
+// line is: date, payee, memo, value
+type line [4]string
 
-func Parse(name string, file io.Reader, password string) (io.Reader, error) {
-	buff := &bytes.Buffer{}
+func Parse(name string, file multipart.File, size int64, password string) (io.Reader, error) {
+	var (
+		err   error
+		qtype qif.QIFType
+		lines []line
+	)
 
-	csvFile := csv.NewWriter(buff)
-	csvFile.Comma = ';'
-
-	if err := csvFile.Write(csvHeaders); err != nil {
-		return nil, err
-	}
-
-	var err error
 	switch filepath.Ext(name) {
 	case ".pdf":
-		err = scanPDFRows(file, password, csvFile)
+		qtype = qif.BankType
+		lines, err = scanPDFRows(file, password, size)
 	case ".csv":
-		err = scanCSVRows(file, password, csvFile)
+		qtype = qif.CreditCardType
+		lines, err = scanCSVRows(file)
 	default:
 		return nil, fmt.Errorf("invalid file %s", name)
 	}
@@ -41,29 +34,20 @@ func Parse(name string, file io.Reader, password string) (io.Reader, error) {
 		return nil, err
 	}
 
-	csvFile.Flush()
-
-	if err := csvFile.Error(); err != nil {
-		return nil, err
-	}
-
-	return buff, nil
+	return qif.Parse(qtype, linesToTransactions(lines))
 }
 
-func parseAmount(value, installment string) (decimal.Decimal, string) {
-	value = strings.ReplaceAll(value, ".", "")
-	value = strings.ReplaceAll(value, ",", ".")
-	amount := decimal.RequireFromString(value)
+func linesToTransactions(lines []line) []qif.Transaction {
+	qt := make([]qif.Transaction, 0, len(lines))
 
-	if installment == "Única" || installment == "" {
-		return amount, ""
+	for _, l := range lines {
+		qt = append(qt, qif.Transaction{
+			Date:   l[0],
+			Payee:  l[1],
+			Memo:   l[2],
+			Amount: l[3],
+		})
 	}
 
-	parts := strings.SplitN(installment, "/", 2)
-
-	if parts[0] == "1" {
-		return amount.Mul(decimal.RequireFromString(parts[1])), parts[1]
-	}
-
-	return decimal.Zero, ""
+	return qt
 }

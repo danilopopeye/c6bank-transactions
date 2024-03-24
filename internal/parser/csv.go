@@ -4,60 +4,64 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const dateFormat = "02/01/2006"
+// 0     1            2             3          4          5        6               7                8
+// Data; Nome Cartão; Final Cartão; Categoria; Descrição; Parcela; Valor (em US$); Cotação (em R$); Valor (em R$)
 
-func scanCSVRows(file io.Reader, _ string, csvFile *csv.Writer) error {
+const (
+	dateFormat = "02/01/2006"
+	minus      = '-'
+)
+
+func scanCSVRows(file io.Reader) ([]line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
-	lines, err := csvReader.ReadAll()
+	_, err := csvReader.Read() // header
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// 0     1            2             3          4          5        6               7                8
-	// Data; Nome Cartão; Final Cartão; Categoria; Descrição; Parcela; Valor (em US$); Cotação (em R$); Valor (em R$)
-	for i, line := range lines {
-		if i == 0 {
-			continue
+	var lines []line
+
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
 		}
 
-		date, card, payee, memo, outflow, inflow := line[0], line[2], line[4], line[5], line[8], ""
-
-		if outflow[0] == '-' {
-			outflow, inflow = "", outflow
+		if record[8][0] == minus {
+			record[8] = record[8][1:]
+		} else {
+			record[8] = fmt.Sprintf("-%s", record[8])
 		}
 
-		if memo != "Única" {
-			if err := handleInstallments(line, csvFile); err != nil {
-				return err
+		if record[5] == "Única" {
+			record[5] = ""
+		} else {
+			if err := handleInstallments(record, &lines); err != nil {
+				return nil, err
 			}
 
 			continue
 		}
 
-		// log.Printf("%v\n", []string{date, payee, fmt.Sprintf("%s; %s", card, memo), outflow, inflow})
-		if err := csvFile.Write([]string{date, payee, fmt.Sprintf("%s; %s", card, memo), outflow, inflow}); err != nil {
-			return err
-		}
+		lines = append(lines, line{record[0], record[4], record[5], record[8]})
 	}
 
-	return nil
+	return lines, nil
 }
 
-func handleInstallments(line []string, csvFile *csv.Writer) error {
-	purchase, card, payee, installment, value := line[0], line[2], line[4], line[5], line[8]
+func handleInstallments(record []string, lines *[]line) error {
+	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
-	// if parts[0] == parts[1] {
-	// 	return nil
-	// }
 
 	current, err := strconv.Atoi(parts[0])
 	if err != nil {
@@ -76,25 +80,14 @@ func handleInstallments(line []string, csvFile *csv.Writer) error {
 
 	if current > 1 {
 		dateFixed := date.AddDate(0, current-1, 0)
-		log.Printf("%s %s :: %s -> %s", payee, installment, date.Format(dateFormat), dateFixed.Format(dateFormat))
-
-		if err := csvFile.Write([]string{dateFixed.Format(dateFormat), payee, fmt.Sprintf("%s; %d/%d", card, current, total), value, ""}); err != nil {
-			return err
-		}
-
+		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
 		return nil
 	}
 
-	// if payee != "HS MORUMBI" {
-	// 	return nil
-	// }
-
 	for ; current <= total; current++ {
 		dateFixed := date.AddDate(0, current-1, 0)
-
-		if err := csvFile.Write([]string{dateFixed.Format(dateFormat), payee, fmt.Sprintf("%s; %d/%d", card, current, total), value, ""}); err != nil {
-			return err
-		}
+		memo := fmt.Sprintf("%d/%d", current, total)
+		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, memo, value})
 	}
 
 	return nil
