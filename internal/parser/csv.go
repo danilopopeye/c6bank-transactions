@@ -15,6 +15,7 @@ import (
 const (
 	dateFormat = "02/01/2006"
 	minus      = '-'
+	fee        = "ANUIDADE DIFERENCIADA"
 )
 
 func scanCSVRows(file io.Reader) ([]line, error) {
@@ -44,6 +45,8 @@ func scanCSVRows(file io.Reader) ([]line, error) {
 
 		if record[5] == "Única" {
 			record[5] = ""
+		} else if strings.ToUpper(record[4]) == fee {
+			// INFO do not handle installments
 		} else {
 			if err := handleInstallments(record, &lines); err != nil {
 				return nil, err
