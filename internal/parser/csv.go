@@ -87,10 +87,13 @@ func handleInstallments(record []string, lines *[]line) error {
 		return nil
 	}
 
+	var future string
+
 	for ; current <= total; current++ {
 		dateFixed := date.AddDate(0, current-1, 0)
-		memo := fmt.Sprintf("%d/%d", current, total)
+		memo := fmt.Sprintf("%d/%d%s", current, total, future)
 		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, memo, value})
+		future = " futuro"
 	}
 
 	return nil
