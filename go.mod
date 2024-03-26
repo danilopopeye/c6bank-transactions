@@ -5,7 +5,6 @@ go 1.22
 require (
 	github.com/ledongthuc/pdf v0.0.0-20240201131950-da5b75280b06
 	github.com/segmentio/fasthash v1.0.3
-	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
 )
 
