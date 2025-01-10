@@ -21,10 +21,11 @@ func main() {
 	mux.HandleFunc("/", indexHandler)
 	mux.HandleFunc("/upload", uploadHandler)
 
+	host := getenv("HOST", "127.0.0.1")
 	port := getenv("PORT", "4500")
 
 	httpServer := http.Server{
-		Addr:              "127.0.0.1:" + port,
+		Addr:              host + ":" + port,
 		Handler:           mux,
 		ReadTimeout:       time.Second * 5,
 		ReadHeaderTimeout: time.Second * 1,
@@ -34,7 +35,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("server listening at :%s", port)
+		log.Printf("server listening at %s:%s", host, port)
 
 		if err := httpServer.ListenAndServe(); err != nil {
 			log.Fatalln("ERROR", err)
