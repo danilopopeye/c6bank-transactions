@@ -12,7 +12,7 @@ import (
 // line is: date, payee, memo, value
 type line [4]string
 
-func Parse(name string, file multipart.File, size int64, password string) (io.Reader, error) {
+func Parse(name string, file multipart.File, size int64, password string, invoiceRef string) (io.Reader, error) {
 	var (
 		err   error
 		qtype qif.QIFType

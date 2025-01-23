@@ -18,7 +18,7 @@ const (
 	fee        = "ANUIDADE DIFERENCIADA"
 )
 
-func scanCSVRows(file io.Reader) ([]line, error) {
+func scanCSVRows(file io.Reader, invoiceRef string) ([]line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
@@ -48,12 +48,14 @@ func scanCSVRows(file io.Reader) ([]line, error) {
 		} else if strings.ToUpper(record[4]) == fee {
 			// INFO do not handle installments
 		} else {
-			if err := handleInstallments(record, &lines); err != nil {
+			if err := handleInstallments(record, &lines, invoiceRef); err != nil {
 				return nil, err
 			}
 
 			continue
 		}
+
+		addInvoiceReference(&record[5], invoiceRef)
 
 		lines = append(lines, line{record[0], record[4], record[5], record[8]})
 	}
@@ -61,7 +63,7 @@ func scanCSVRows(file io.Reader) ([]line, error) {
 	return lines, nil
 }
 
-func handleInstallments(record []string, lines *[]line) error {
+func handleInstallments(record []string, lines *[]line, invoiceRef string) error {
 	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
@@ -82,6 +84,9 @@ func handleInstallments(record []string, lines *[]line) error {
 	}
 
 	if current > 1 {
+
+		addInvoiceReference(&installment, invoiceRef)
+
 		dateFixed := date.AddDate(0, current-1, 0)
 		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
 		return nil
@@ -89,12 +94,26 @@ func handleInstallments(record []string, lines *[]line) error {
 
 	var future string
 
+	addInvoiceReference(&future, invoiceRef)
+
 	for ; current <= total; current++ {
 		dateFixed := date.AddDate(0, current-1, 0)
-		memo := fmt.Sprintf("%d/%d%s", current, total, future)
+		memo := fmt.Sprintf("%d/%d - %s", current, total, future)
 		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, memo, value})
-		future = " futuro"
+		//future = " futuro"
 	}
 
 	return nil
+}
+
+func addInvoiceReference(origin *string, invoiceRef string) {
+
+	if len(invoiceRef) > 0 {
+		if len(*origin) > 0 {
+			*origin = fmt.Sprintf("%s - %s", *origin, invoiceRef)
+		} else {
+			*origin = invoiceRef
+		}
+	}
+
 }

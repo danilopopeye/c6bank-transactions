@@ -12,7 +12,11 @@
   <form id="form" enctype="multipart/form-data" action="/upload" method="POST">
     <p><input class="input file-input" type="file" name="file" accept="application/pdf,text/csv" /></p>
     <p>
-      <input id="number" type="text" maxlength="4" name="number" size="4" />
+      <input id="invoice_reference" type="text" maxlength="20" name="invoice_reference" size="10" />
+      <label for="invoice_reference">referencia da fatura</label>
+    </p>
+    <p>
+      <input id="number" type="text" maxlength="6" name="number" size="6" />
       <label for="number">4 dígitos cartão (somente para PDF)</label>
     </p>
     <button class="button" type="submit">Enviar</button>
