@@ -18,6 +18,7 @@ const (
 )
 
 var simpleTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*R\$\s*([0-9.]+\,\d+)\s+.+(\d{4})`)
+var simpleProcessingTransactionRegex = regexp.MustCompile(`(?i)(\d{2}\/\d{2})\s+(.+)\s*Cartao final\s*(\d+)\s*Em processamento\s*R\$\s*([0-9.]+\,\d+)`)
 var installmentTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*.+(\d{4})\s*R\$\s*([0-9.]+\,\d+)\s+\w+\s+(\d+)\s+\w+\s+(\d+)`)
 
 // var currentDate time.Time
@@ -46,6 +47,11 @@ func GetTransactions(t string) []line {
 
 	for _, m := range simpleMatches {
 		transactions = append(transactions, line{fixYear(m[1]), m[2], "", m[3]})
+	}
+
+	pMatches := simpleProcessingTransactionRegex.FindAllStringSubmatch(t, -1)
+	for _, m := range pMatches {
+		transactions = append(transactions, line{fixYear(m[1]), m[2], "", m[4]})
 	}
 
 	return transactions
