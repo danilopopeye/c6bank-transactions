@@ -17,8 +17,8 @@ const (
 	tesseractBin = "/usr/bin/tesseract"
 )
 
-var simpleTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*R\$\s*(\d+\,\d+)\s+.+(\d{4})`)
-var installmentTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*.+(\d{4})\s*R\$\s*(\d+\,\d+)\s+\w+\s+(\d+)\s+\w+\s+(\d+)`)
+var simpleTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*R\$\s*([0-9.]+\,\d+)\s+.+(\d{4})`)
+var installmentTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*.+(\d{4})\s*R\$\s*([0-9.]+\,\d+)\s+\w+\s+(\d+)\s+\w+\s+(\d+)`)
 
 // var currentDate time.Time
 var currentDate time.Time
