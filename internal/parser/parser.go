@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"path/filepath"
+	"strings"
 
 	"git.home/c6bank-transactions/internal/qif"
 )
@@ -19,13 +20,16 @@ func Parse(name string, file multipart.File, size int64, password string, invoic
 		lines []line
 	)
 
-	switch filepath.Ext(name) {
+	switch strings.ToLower(filepath.Ext(name)) {
 	case ".pdf":
 		qtype = qif.BankType
 		lines, err = scanPDFRows(file, password, size)
 	case ".csv":
 		qtype = qif.CreditCardType
-		lines, err = scanCSVRows(file)
+		lines, err = scanCSVRows(file, invoiceRef)
+	case ".jpg":
+		qtype = qif.CreditCardType
+		lines, err = scanImageRows(file, invoiceRef)
 	default:
 		return nil, fmt.Errorf("invalid file %s", name)
 	}
