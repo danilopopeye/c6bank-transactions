@@ -18,7 +18,7 @@ const (
 	fee        = "ANUIDADE DIFERENCIADA"
 )
 
-func scanCSVRows(file io.Reader, invoiceRef string) ([]line, error) {
+func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
@@ -48,7 +48,7 @@ func scanCSVRows(file io.Reader, invoiceRef string) ([]line, error) {
 		} else if strings.ToUpper(record[4]) == fee {
 			// INFO do not handle installments
 		} else {
-			if err := handleInstallments(record, &lines, invoiceRef); err != nil {
+			if err := handleInstallments(record, &lines, invoiceRef, installmentH); err != nil {
 				return nil, err
 			}
 
@@ -63,7 +63,7 @@ func scanCSVRows(file io.Reader, invoiceRef string) ([]line, error) {
 	return lines, nil
 }
 
-func handleInstallments(record []string, lines *[]line, invoiceRef string) error {
+func handleInstallments(record []string, lines *[]line, invoiceRef string, installmentH string) error {
 	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
@@ -83,13 +83,15 @@ func handleInstallments(record []string, lines *[]line, invoiceRef string) error
 		return err
 	}
 
-	if current > 1 {
+	if installmentH == "current_mont" {
+		if current > 1 {
 
-		addInvoiceReference(&installment, invoiceRef)
+			addInvoiceReference(&installment, invoiceRef)
 
-		dateFixed := date.AddDate(0, current-1, 0)
-		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
-		return nil
+			dateFixed := date.AddDate(0, current-1, 0)
+			*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
+			return nil
+		}
 	}
 
 	var future string

@@ -13,7 +13,7 @@ import (
 // line is: date, payee, memo, value
 type line [4]string
 
-func Parse(name string, file multipart.File, size int64, password string, invoiceRef string) (io.Reader, error) {
+func Parse(name string, file multipart.File, size int64, password string, invoiceRef string, installmentH string) (io.Reader, error) {
 	var (
 		err   error
 		qtype qif.QIFType
@@ -26,10 +26,10 @@ func Parse(name string, file multipart.File, size int64, password string, invoic
 		lines, err = scanPDFRows(file, password, size)
 	case ".csv":
 		qtype = qif.CreditCardType
-		lines, err = scanCSVRows(file, invoiceRef)
+		lines, err = scanCSVRows(file, invoiceRef, installmentH)
 	case ".jpg":
 		qtype = qif.CreditCardType
-		lines, err = scanImageRows(file, invoiceRef)
+		lines, err = scanImageRows(file, invoiceRef, installmentH)
 	default:
 		return nil, fmt.Errorf("invalid file %s", name)
 	}

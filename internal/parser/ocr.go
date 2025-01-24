@@ -57,7 +57,7 @@ func GetTransactions(t string) []line {
 	return transactions
 }
 
-func GetInstallmentTransactions(t string, invoiceRef string) ([]line, error) {
+func GetInstallmentTransactions(t string, invoiceRef string, installmentH string) ([]line, error) {
 	var transactions []line
 
 	installmentMatches := installmentTransactionRegex.FindAllStringSubmatch(t, -1)
@@ -66,7 +66,7 @@ func GetInstallmentTransactions(t string, invoiceRef string) ([]line, error) {
 
 		m[1] = fixYear(m[1])
 
-		if err := handleInstallments([]string{m[1], "", "", "", m[2], fmt.Sprintf("%s/%s", m[5], m[6]), "", "", m[4]}, &transactions, invoiceRef); err != nil {
+		if err := handleInstallments([]string{m[1], "", "", "", m[2], fmt.Sprintf("%s/%s", m[5], m[6]), "", "", m[4]}, &transactions, invoiceRef, installmentH); err != nil {
 			return nil, err
 		}
 	}
@@ -74,14 +74,14 @@ func GetInstallmentTransactions(t string, invoiceRef string) ([]line, error) {
 	return transactions, nil
 }
 
-func scanImageRows(file io.Reader, invoiceRef string) ([]line, error) {
+func scanImageRows(file io.Reader, invoiceRef string, installmentH string) ([]line, error) {
 
 	text, err := runOCR(file)
 	if err != nil {
 		return nil, err
 	}
 
-	installments, err := GetInstallmentTransactions(text, invoiceRef)
+	installments, err := GetInstallmentTransactions(text, invoiceRef, installmentH)
 	if err != nil {
 		return nil, err
 	}
