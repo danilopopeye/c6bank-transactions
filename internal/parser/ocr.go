@@ -74,7 +74,7 @@ func GetInstallmentTransactions(t string, invoiceRef string, installmentH string
 	return transactions, nil
 }
 
-func scanImageRows(file multipart.File, invoiceRef string, installmentH string) ([]Line, error) {
+func scanImageRows(file io.Reader, invoiceRef string, installmentH string) ([]Line, error) {
 	text, err := runOCR(file)
 	if err != nil {
 		return nil, err
