@@ -10,14 +10,14 @@ import (
 	"git.home/c6bank-transactions/internal/qif"
 )
 
-// line is: date, payee, memo, value
-type line [4]string
+// Line is: date, payee, memo, value
+type Line [4]string
 
 func Parse(name string, file multipart.File, size int64, password string, invoiceRef string, installmentH string) (io.Reader, error) {
 	var (
 		err   error
 		qtype qif.QIFType
-		lines []line
+		lines []Line
 	)
 
 	switch strings.ToLower(filepath.Ext(name)) {
@@ -41,7 +41,7 @@ func Parse(name string, file multipart.File, size int64, password string, invoic
 	return qif.Parse(qtype, linesToTransactions(lines))
 }
 
-func linesToTransactions(lines []line) []qif.Transaction {
+func linesToTransactions(lines []Line) []qif.Transaction {
 	qt := make([]qif.Transaction, 0, len(lines))
 
 	for _, l := range lines {

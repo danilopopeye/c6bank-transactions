@@ -18,7 +18,7 @@ const (
 	fee        = "ANUIDADE DIFERENCIADA"
 )
 
-func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]line, error) {
+func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]Line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
@@ -27,7 +27,7 @@ func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]line
 		return nil, err
 	}
 
-	var lines []line
+	var lines []Line
 
 	for {
 		record, err := csvReader.Read()
@@ -57,13 +57,13 @@ func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]line
 
 		addInvoiceReference(&record[5], invoiceRef)
 
-		lines = append(lines, line{record[0], record[4], record[5], record[8]})
+		lines = append(lines, Line{record[0], record[4], record[5], record[8]})
 	}
 
 	return lines, nil
 }
 
-func handleInstallments(record []string, lines *[]line, invoiceRef string, installmentH string) error {
+func handleInstallments(record []string, lines *[]Line, invoiceRef string, installmentH string) error {
 	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
@@ -85,11 +85,11 @@ func handleInstallments(record []string, lines *[]line, invoiceRef string, insta
 
 	if installmentH == "current_mont" {
 		if current > 1 {
-
 			addInvoiceReference(&installment, invoiceRef)
 
 			dateFixed := date.AddDate(0, current-1, 0)
-			*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
+			*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, installment, value})
+
 			return nil
 		}
 	}
@@ -101,8 +101,8 @@ func handleInstallments(record []string, lines *[]line, invoiceRef string, insta
 	for ; current <= total; current++ {
 		dateFixed := date.AddDate(0, current-1, 0)
 		memo := fmt.Sprintf("%d/%d - %s", current, total, future)
-		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, memo, value})
-		//future = " futuro"
+		*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, memo, value})
+		// future = " futuro"
 	}
 
 	return nil

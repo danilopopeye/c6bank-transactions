@@ -40,25 +40,25 @@ func runOCR(file io.Reader) (string, error) {
 	return ocrOutput.String(), nil
 }
 
-func GetTransactions(t string) []line {
-	var transactions []line
+func GetTransactions(t string) []Line {
+	var transactions []Line
 
 	simpleMatches := simpleTransactionRegex.FindAllStringSubmatch(t, -1)
 
 	for _, m := range simpleMatches {
-		transactions = append(transactions, line{fixYear(m[1]), m[2], "", m[3]})
+		transactions = append(transactions, Line{fixYear(m[1]), m[2], "", m[3]})
 	}
 
 	pMatches := simpleProcessingTransactionRegex.FindAllStringSubmatch(t, -1)
 	for _, m := range pMatches {
-		transactions = append(transactions, line{fixYear(m[1]), m[2], "", m[4]})
+		transactions = append(transactions, Line{fixYear(m[1]), m[2], "", m[4]})
 	}
 
 	return transactions
 }
 
-func GetInstallmentTransactions(t string, invoiceRef string, installmentH string) ([]line, error) {
-	var transactions []line
+func GetInstallmentTransactions(t string, invoiceRef string, installmentH string) ([]Line, error) {
+	var transactions []Line
 
 	installmentMatches := installmentTransactionRegex.FindAllStringSubmatch(t, -1)
 
@@ -74,8 +74,7 @@ func GetInstallmentTransactions(t string, invoiceRef string, installmentH string
 	return transactions, nil
 }
 
-func scanImageRows(file io.Reader, invoiceRef string, installmentH string) ([]line, error) {
-
+func scanImageRows(file multipart.File, invoiceRef string, installmentH string) ([]Line, error) {
 	text, err := runOCR(file)
 	if err != nil {
 		return nil, err
@@ -90,7 +89,6 @@ func scanImageRows(file io.Reader, invoiceRef string, installmentH string) ([]li
 }
 
 func fixYear(date string) string {
-
 	d := strings.Split(date, "/")
 
 	transactionMonth, err := strconv.Atoi(d[1])
@@ -101,7 +99,6 @@ func fixYear(date string) string {
 
 	if int(currentDate.Month()) < transactionMonth {
 		return fmt.Sprintf("%s/%s", date, currentDate.AddDate(-1, 0, 0).Format("2006"))
-
 	} else {
 		return fmt.Sprintf("%s/%s", date, currentDate.Format("2006"))
 	}
