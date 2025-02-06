@@ -9,16 +9,22 @@ import (
 )
 
 func TestGetTransactions(t *testing.T) {
+	t.Parallel()
 
-	transactionsRes := [][]string{
-		{"26/12", "BKIN ", "55,76"},
-		{"26/12", "PANIFICIO ", "", "41,00"},
-		{"26/12", "PADARIAFERPAO ", "", "11,55"},
-		{"24/12", "SUPERMERCADO JVA II ", "", "331,40"},
-		{"24/12", "MERCADOLIVRE*FORCATOT ", "", "422,96"},
-		{"24/12", "PADARIAFERPAO ", "", "21,91"},
-		{"24/12", "PADARIA ROMERA ", "", "108,60"},
-		{"23/12", "MINUTO PA-5858 ", "", "15,99"},
+	transactionsLines := []parser.Line{
+		{"26/12/0000", "BKIN ", "", "55,76"},
+		{"26/12/0000", "PANIFICIO ", "", "41,00"},
+		{"26/12/0000", "PADARIAFERPAO ", "", "11,55"},
+		{"24/12/0000", "SUPERMERCADO JVA II ", "", "331,40"},
+		{"24/12/0000", "MERCADOLIVRE*FORCATOT ", "", "422,96"},
+		{"24/12/0000", "PADARIAFERPAO ", "", "21,91"},
+		{"24/12/0000", "PADARIA ROMERA ", "", "108,60"},
+		{"23/12/0000", "MINUTO PA-5858 ", "", "15,99"},
+	}
+
+	installmentTransactionsLines := []parser.Line{
+		{"23/12/0000", "COMPRA PARCELADA", "1/2 - jan", "123,45"},
+		{"23/01/0001", "COMPRA PARCELADA", "2/2 - jan", "123,45"},
 	}
 
 	ocrText := `26/12
@@ -58,27 +64,32 @@ PORTO SEGURO SEGUROS
 Cartao final 6269
 
 R$ 887,85
-Parcela 1 de 10`
+Parcela 1 de 2`
+
+	ocrTextInstallment := `23/12
+MINUTO PA-5858 R$ 15,99
+Cartao final 6269
+
+23/12
+COMPRA PARCELADA
+Cartao final 6269
+
+R$ 123,45
+Parcela 1 de 2`
 
 	t.Run("simpleTransactionMatch", func(t *testing.T) {
-		transactions := parser.GetTransactions(ocrText)
-		assert.Equal(t, transactions, transactionsRes)
-		for i, tr := range transactions {
-			t.Logf("%d -> Data(%s) Payee(%s) Parcela(%s) Valor(%s)", i, tr[0], tr[1], tr[2], tr[3])
-		}
+		t.Parallel()
 
+		transactions := parser.GetTransactions(ocrText)
+		assert.EqualValues(t, transactions, transactionsLines)
 	})
 
 	t.Run("installmentTransactionMatch", func(t *testing.T) {
+		t.Parallel()
 
-		transactions, err := parser.GetInstallmentTransactions(ocrText, "jan", "")
+		transactions, err := parser.GetInstallmentTransactions(ocrTextInstallment, "jan", "")
 		require.NoError(t, err)
 
-		assert.Equal(t, transactions, transactionsRes)
-
-		for i, tr := range transactions {
-			t.Logf("%d -> Data(%s) Payee(%s) Parcela(%s) Valor(%s)", i, tr[0], tr[1], tr[2], tr[3])
-		}
-
+		assert.EqualValues(t, transactions, installmentTransactionsLines)
 	})
 }

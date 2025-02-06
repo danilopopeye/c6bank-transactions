@@ -17,11 +17,12 @@ const (
 	tesseractBin = "/usr/bin/tesseract"
 )
 
-var simpleTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*R\$\s*([0-9.]+\,\d+)\s+.+(\d{4})`)
-var simpleProcessingTransactionRegex = regexp.MustCompile(`(?i)(\d{2}\/\d{2})\s+(.+)\s*Cartao final\s*(\d+)\s*Em processamento\s*R\$\s*([0-9.]+\,\d+)`)
-var installmentTransactionRegex = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*.+(\d{4})\s*R\$\s*([0-9.]+\,\d+)\s+\w+\s+(\d+)\s+\w+\s+(\d+)`)
+var (
+	simpleTransactionRegex           = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*R\$\s*([0-9.]+\,\d+)\s+.+(\d{4})`)
+	simpleProcessingTransactionRegex = regexp.MustCompile(`(?i)(\d{2}\/\d{2})\s+(.+)\s*Cartao final\s*(\d+)\s*Em processamento\s*R\$\s*([0-9.]+\,\d+)`)
+	installmentTransactionRegex      = regexp.MustCompile(`(\d{2}\/\d{2})\s+(.+)\s*.+(\d{4})\s*R\$\s*([0-9.]+\,\d+)\s+\w+\s+(\d+)\s+\w+\s+(\d+)`)
+)
 
-// var currentDate time.Time
 var currentDate time.Time
 
 func runOCR(file io.Reader) (string, error) {
@@ -62,11 +63,10 @@ func GetInstallmentTransactions(t string, invoiceRef string, installmentH string
 
 	installmentMatches := installmentTransactionRegex.FindAllStringSubmatch(t, -1)
 
-	for _, m := range installmentMatches {
+	for _, match := range installmentMatches {
+		record := []string{fixYear(match[1]), "", "", "", match[2], fmt.Sprintf("%s/%s", match[5], match[6]), "", "", match[4]}
 
-		m[1] = fixYear(m[1])
-
-		if err := handleInstallments([]string{m[1], "", "", "", m[2], fmt.Sprintf("%s/%s", m[5], m[6]), "", "", m[4]}, &transactions, invoiceRef, installmentH); err != nil {
+		if err := handleInstallments(record, &transactions, invoiceRef, installmentH); err != nil {
 			return nil, err
 		}
 	}
