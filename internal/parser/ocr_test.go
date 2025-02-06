@@ -70,8 +70,8 @@ Parcela 1 de 10`
 	})
 
 	t.Run("installmentTransactionMatch", func(t *testing.T) {
-		transactions, err := parser.GetInstallmentTransactions(ocrText, "jan", current_month)
 
+		transactions, err := parser.GetInstallmentTransactions(ocrText, "jan", "")
 		require.NoError(t, err)
 
 		assert.Equal(t, transactions, transactionsRes)
