@@ -29,6 +29,9 @@ func indexHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	var invoiceRef string
+	installmentH := "current_month"
+
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -48,6 +51,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	file := files[0]
+
+	// get invoice month if given
+	if invoiceReference, ok := r.MultipartForm.Value["invoice_reference"]; ok {
+		invoiceRef = invoiceReference[0]
+	}
+
+	// installments handling options
+	if installmentHandling, ok := r.MultipartForm.Value["installment_handler"]; ok {
+		if installmentHandling[0] == "all" {
+			installmentH = installmentHandling[0]
+		}
+	}
 
 	number, ok := r.MultipartForm.Value["number"]
 	if !ok || len(number) > 1 {
@@ -73,7 +88,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := parser.Parse(file.Filename, body, file.Size, number[0])
+	output, err := parser.Parse(file.Filename, body, file.Size, number[0], invoiceRef, installmentH)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("could not parse %s: %s", file.Filename, err), http.StatusBadRequest)
 		return

@@ -16,13 +16,13 @@ const lf = "\n"
 // line date payee memo value type
 var transactionRegexp = regexp.MustCompile(`(?P<date>[0-9/]{10})\s+(?P<payee>[A-Z0-9., ]+)\s*-?\s*(?P<memo>.*)\s+[0-9]{12}\s+(?P<value>[0-9.]+,[0-9]{2})\s+(?P<type>[CD])`)
 
-func scanPDFRows(file io.ReaderAt, pass string, size int64) ([]line, error) {
+func scanPDFRows(file io.ReaderAt, pass string, size int64) ([]Line, error) {
 	content, err := readPDF(file, size, pass)
 	if err != nil {
 		return nil, err
 	}
 
-	var lines []line
+	var lines []Line
 	scanner := bufio.NewScanner(content)
 
 	for scanner.Scan() {
@@ -35,7 +35,7 @@ func scanPDFRows(file io.ReaderAt, pass string, size int64) ([]line, error) {
 			record[4] = fmt.Sprintf("-%s", record[4])
 		}
 
-		lines = append(lines, line{record[1], record[2], record[3], record[4]})
+		lines = append(lines, Line{record[1], record[2], record[3], record[4]})
 	}
 
 	return lines, nil

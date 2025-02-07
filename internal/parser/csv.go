@@ -18,7 +18,7 @@ const (
 	fee        = "ANUIDADE DIFERENCIADA"
 )
 
-func scanCSVRows(file io.Reader) ([]line, error) {
+func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]Line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
@@ -27,7 +27,7 @@ func scanCSVRows(file io.Reader) ([]line, error) {
 		return nil, err
 	}
 
-	var lines []line
+	var lines []Line
 
 	for {
 		record, err := csvReader.Read()
@@ -48,20 +48,22 @@ func scanCSVRows(file io.Reader) ([]line, error) {
 		} else if strings.ToUpper(record[4]) == fee {
 			// INFO do not handle installments
 		} else {
-			if err := handleInstallments(record, &lines); err != nil {
+			if err := handleInstallments(record, &lines, invoiceRef, installmentH); err != nil {
 				return nil, err
 			}
 
 			continue
 		}
 
-		lines = append(lines, line{record[0], record[4], record[5], record[8]})
+		addInvoiceReference(&record[5], invoiceRef)
+
+		lines = append(lines, Line{record[0], record[4], record[5], record[8]})
 	}
 
 	return lines, nil
 }
 
-func handleInstallments(record []string, lines *[]line) error {
+func handleInstallments(record []string, lines *[]Line, invoiceRef string, installmentH string) error {
 	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
@@ -81,20 +83,39 @@ func handleInstallments(record []string, lines *[]line) error {
 		return err
 	}
 
-	if current > 1 {
-		dateFixed := date.AddDate(0, current-1, 0)
-		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, installment, value})
-		return nil
+	if installmentH == "current_mont" {
+		if current > 1 {
+			addInvoiceReference(&installment, invoiceRef)
+
+			dateFixed := date.AddDate(0, current-1, 0)
+			*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, installment, value})
+
+			return nil
+		}
 	}
 
 	var future string
 
+	addInvoiceReference(&future, invoiceRef)
+
 	for ; current <= total; current++ {
 		dateFixed := date.AddDate(0, current-1, 0)
-		memo := fmt.Sprintf("%d/%d%s", current, total, future)
-		*lines = append(*lines, line{dateFixed.Format(dateFormat), payee, memo, value})
-		future = " futuro"
+		memo := fmt.Sprintf("%d/%d - %s", current, total, future)
+		*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, memo, value})
+		// future = " futuro"
 	}
 
 	return nil
+}
+
+func addInvoiceReference(origin *string, invoiceRef string) {
+
+	if len(invoiceRef) > 0 {
+		if len(*origin) > 0 {
+			*origin = fmt.Sprintf("%s - %s", *origin, invoiceRef)
+		} else {
+			*origin = invoiceRef
+		}
+	}
+
 }
