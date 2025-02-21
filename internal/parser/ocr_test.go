@@ -1,95 +1,134 @@
 package parser_test
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"git.home/c6bank-transactions/internal/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetTransactions(t *testing.T) {
+const (
+	tCurr = "COMPRA A VISTA"
+	tNew  = "NOVO PARCELAMENTO"
+	tOld  = "PARCELAMENTO ANTIGO"
+)
+
+var (
+	phCur = []byte("__CURRENT__")
+	phNew = []byte("__NEW__")
+	phOld = []byte("__OLD__")
+
+	mockTime MockTime
+)
+
+type MockTime struct{}
+
+func (MockTime) Now() time.Time {
+	return time.Date(1985, time.August, 5, 0, 0, 0, 0, time.Local)
+}
+
+func TestScanImageLines(t *testing.T) {
 	t.Parallel()
 
-	transactionsLines := []parser.Line{
-		{"26/12/0000", "BKIN ", "", "55,76"},
-		{"26/12/0000", "PANIFICIO ", "", "41,00"},
-		{"26/12/0000", "PADARIAFERPAO ", "", "11,55"},
-		{"24/12/0000", "SUPERMERCADO JVA II ", "", "331,40"},
-		{"24/12/0000", "MERCADOLIVRE*FORCATOT ", "", "422,96"},
-		{"24/12/0000", "PADARIAFERPAO ", "", "21,91"},
-		{"24/12/0000", "PADARIA ROMERA ", "", "108,60"},
-		{"23/12/0000", "MINUTO PA-5858 ", "", "15,99"},
+	text := transactionText(t)
+
+	lines, err := parser.ScanImageLines(mockTime, text, "09/1985")
+	require.NoError(t, err)
+
+	transactions := [][]string{
+		{"1985-08-01", "COMPRA A VISTA", "4321 09/1985", "167,91", "false", "false"},
+		{"1985-08-02", "NOVO PARCELAMENTO", "1/4 4321 09/1985", "70,75", "true", "false"},
+		// {"1985-08-03", "PARCELAMENTO ANTIGO", "3/7 1234 09/1985", "123,45", "true", "false"},
+
+		{"1985-09-02", "NOVO PARCELAMENTO", "2/4 4321 10/1985", "70,75", "true", "true"},
+		{"1985-10-02", "NOVO PARCELAMENTO", "3/4 4321 11/1985", "70,75", "true", "true"},
+		{"1985-11-01", "NOVO PARCELAMENTO", "4/4 4321 12/1985", "70,75", "true", "true"}, // this one is strange
+		// {"1985-09-03", "PARCELAMENTO ANTIGO", "4/7 1234 10/1985", "123,45", "true", "true"},
+		// {"1985-10-03", "PARCELAMENTO ANTIGO", "5/7 1234 11/1985", "123,45", "true", "true"},
+		// {"1985-11-03", "PARCELAMENTO ANTIGO", "6/7 1234 12/1985", "123,45", "true", "true"},
+		// {"1985-12-03", "PARCELAMENTO ANTIGO", "7/7 1234 01/1986", "123,45", "true", "true"},
 	}
 
-	installmentTransactionsLines := []parser.Line{
-		{"23/12/0000", "COMPRA PARCELADA", "1/2 - jan", "123,45"},
-		{"23/01/0001", "COMPRA PARCELADA", "2/2 - jan", "123,45"},
+	assert.Len(t, lines, len(transactions))
+
+	content := fmt.Sprintf("%v", lines)
+
+	assert.Equal(t, 1, strings.Count(content, tCurr))
+	assert.Equal(t, 4, strings.Count(content, tNew))
+	// assert.Equal(t, 5, strings.Count(content, tOld))
+
+	for i, line := range lines {
+		transaction := transactions[i]
+
+		assert.Equal(t, transaction[0], line.Date.Format(time.DateOnly))
+		assert.Equal(t, transaction[1], line.Payee)
+		assert.Equal(t, transaction[2], line.Memo)
+		assert.Equal(t, transaction[3], line.Amount)
+		assert.Equal(t, transaction[4], fmt.Sprint(line.Installment))
+		assert.Equal(t, transaction[5], fmt.Sprint(line.Future))
+	}
+}
+
+func TestParse(t *testing.T) {
+	t.Parallel()
+
+	month := mockTime.Now().Month()
+	year := mockTime.Now().Year()
+
+	test := map[string]struct {
+		input string
+		want  time.Time
+	}{
+		"invalid": {
+			input: "inv/alid",
+			want:  time.Time{},
+		},
+		"current": {
+			input: fmt.Sprintf("01/%02d", month),
+			want:  time.Date(year, month, 1, 0, 0, 0, 0, time.Local),
+		},
+		"next": {
+			input: fmt.Sprintf("01/%02d", month+1),
+			want:  time.Date(year-1, month+1, 1, 0, 0, 0, 0, time.Local),
+		},
 	}
 
-	ocrText := `26/12
-BKIN R$ 55,76
-Cartao final 6269
+	for name, tt := range test {
+		t.Run(name+tt.input, func(t *testing.T) {
+			t.Parallel()
 
-26/12
-PANIFICIO R$ 41,00
-Cartao final 6269
+			got := parser.ParseDate(mockTime, tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
-26/12
-PADARIAFERPAO R$ 11,55
-Cartao final 6269
+func transactionText(t *testing.T) io.Reader {
+	t.Helper()
 
-24/12
-SUPERMERCADO JVA II R$ 331,40
-Cartao final 6269
+	month := mockTime.Now().Month()
+	oldMonth := mockTime.Now().AddDate(0, -3, 0).Month()
 
-24/12
-MERCADOLIVRE*FORCATOT R$ 422,96
-Cartao final 6269
+	curr := []byte(fmt.Sprintf("01/%02d", month))
+	inst := []byte(fmt.Sprintf("02/%02d", month))
+	old := []byte(fmt.Sprintf("03/%02d", oldMonth))
 
-24/12
-PADARIAFERPAO R$ 21,91
-Cartao final 6269
+	fixture, err := os.Open("../../test/fixtures/transactions.txt")
+	require.NoError(t, err)
 
-24/12
-PADARIA ROMERA R$ 108,60
-Cartao final 6269
+	text, err := io.ReadAll(fixture)
+	require.NoError(t, err)
 
-23/12
-MINUTO PA-5858 R$ 15,99
-Cartao final 6269
+	replaced := bytes.ReplaceAll(text, phOld, old)
+	replaced = bytes.ReplaceAll(replaced, phCur, curr)
+	replaced = bytes.ReplaceAll(replaced, phNew, inst)
 
-23/12
-PORTO SEGURO SEGUROS
-Cartao final 6269
-
-R$ 887,85
-Parcela 1 de 2`
-
-	ocrTextInstallment := `23/12
-MINUTO PA-5858 R$ 15,99
-Cartao final 6269
-
-23/12
-COMPRA PARCELADA
-Cartao final 6269
-
-R$ 123,45
-Parcela 1 de 2`
-
-	t.Run("simpleTransactionMatch", func(t *testing.T) {
-		t.Parallel()
-
-		transactions := parser.GetTransactions(ocrText)
-		assert.EqualValues(t, transactions, transactionsLines)
-	})
-
-	t.Run("installmentTransactionMatch", func(t *testing.T) {
-		t.Parallel()
-
-		transactions, err := parser.GetInstallmentTransactions(ocrTextInstallment, "jan", "")
-		require.NoError(t, err)
-
-		assert.EqualValues(t, transactions, installmentTransactionsLines)
-	})
+	return bytes.NewBuffer(replaced)
 }
