@@ -43,7 +43,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	number := r.PostFormValue("number")
 	invoiceRef := r.PostFormValue("invoice_reference")
 
-	file, fileHeader, _ := r.FormFile("file")
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
 	filename := fileHeader.Filename
 
 	filetype, err := validateUploadFile(fileHeader.Filename, file)
