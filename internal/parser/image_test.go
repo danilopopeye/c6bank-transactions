@@ -39,7 +39,7 @@ func TestScanImageLines(t *testing.T) {
 
 	text := transactionText(t)
 
-	lines, err := parser.ScanImageLines(mockTime, text, "09/1985")
+	lines, err := parser.ScanImageLines(mockTime, text, "1985-09-01")
 	require.NoError(t, err)
 
 	transactions := [][]string{

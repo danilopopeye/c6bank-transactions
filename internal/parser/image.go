@@ -18,6 +18,7 @@ import (
 
 const (
 	space            = " "
+	coma             = ","
 	lfRune           = '\n'
 	processingText   = "Em processamento"
 	installmentsText = "Parcela"
@@ -31,11 +32,11 @@ var (
 
 	regexDate         = regexp.MustCompile(`^(\d{2})\/(\d{2})\s*`)
 	regexCard         = regexp.MustCompile(`Cartao final\s*(\d+)`)
-	regexValue        = regexp.MustCompile(`R\$\s*(-?[0-9.]+\,\d+)`)
-	regexInstallments = regexp.MustCompile(`Parcela\s*(\d+)\s*de\s*(\d+)`)
+	regexValue        = regexp.MustCompile(`R\$\s*(-?[0-9.]+[, ]\d+)`)
+	regexInstallments = regexp.MustCompile(`Parcela.*(\d+)\s*de\s*(\d+)`)
 )
 
-func scanImage(file io.ReadSeeker, ref string) ([]Transaction, error) {
+func ScanImage(file io.ReadSeeker, ref string) ([]Transaction, error) {
 	cropped, err := image.Crop(file)
 	if err != nil {
 		return nil, err
@@ -57,6 +58,12 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 
 	reader := bufio.NewReader(text)
 
+	refTime, err := time.Parse(time.DateOnly, ref)
+	if err != nil {
+		return nil, err
+	}
+	refText := refTime.Format(refFormat)
+
 	for {
 		line, err := reader.ReadString(lfRune)
 		if err != nil {
@@ -72,7 +79,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 		}
 
 		if len(current) > 0 && regexDate.MatchString(line) {
-			if transaction := parseTransaction(ct, current, ref); transaction != empty {
+			if transaction := parseTransaction(ct, current, refText); transaction != empty {
 				transactions = append(transactions, transaction)
 			}
 
@@ -82,11 +89,11 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 		current += line
 	}
 
-	if transaction := parseTransaction(ct, current, ref); transaction != empty {
+	if transaction := parseTransaction(ct, current, refText); transaction != empty {
 		transactions = append(transactions, transaction)
 	}
 
-	installments, err := parseInstallments(transactions, ref)
+	installments, err := parseInstallments(transactions, refTime)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +101,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 	return append(transactions, installments...), nil
 }
 
-func parseInstallments(ts []Transaction, referenceText string) ([]Transaction, error) {
+func parseInstallments(ts []Transaction, refTime time.Time) ([]Transaction, error) {
 	var (
 		installments []Transaction
 		current      int
@@ -102,11 +109,6 @@ func parseInstallments(ts []Transaction, referenceText string) ([]Transaction, e
 		memo         string
 		err          error
 	)
-
-	reference, err := time.Parse(refFormat, referenceText)
-	if err != nil {
-		return nil, err
-	}
 
 	for _, t := range ts {
 		if !t.Installment {
@@ -120,7 +122,7 @@ func parseInstallments(ts []Transaction, referenceText string) ([]Transaction, e
 
 		for i := 1; current+i <= total; i++ {
 			installmentDate := t.Date.AddDate(0, i, 0)
-			referenceDate := reference.AddDate(0, i, 0)
+			referenceDate := refTime.AddDate(0, i, 0)
 
 			installments = append(installments, Transaction{
 				Date:        installmentDate,
@@ -140,8 +142,6 @@ func parseInstannmentText(text string) (int, int, string, error) {
 	parts := strings.SplitN(text, " ", 3)
 	installmentsText := strings.SplitN(parts[0], "/", 2)
 
-	fmt.Printf("parts: %#v\n", parts)
-
 	current, err := strconv.Atoi(installmentsText[0])
 	if err != nil {
 		return 0, 0, "", err
@@ -160,6 +160,8 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 		return empty
 	}
 
+	// fmt.Println("line:", line)
+
 	var transaction Transaction
 
 	// installments
@@ -168,11 +170,13 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 		transaction.Memo += parseRegex(line, regexInstallments) + space
 		transaction.Installment = true
 
-		if transaction.Memo[:2] != firstInstallment {
+		if transaction.Memo == space || transaction.Memo[:2] != firstInstallment {
 			return empty
 		}
 	}
 	line = regexInstallments.ReplaceAllString(line, "")
+
+	// fmt.Println("installments:", line)
 
 	// date
 
@@ -181,6 +185,8 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 	}
 	line = line[5:]
 
+	// fmt.Println("date:", line)
+
 	// card
 
 	if strings.Contains(line, cardText) {
@@ -188,10 +194,14 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 	}
 	line = regexCard.ReplaceAllString(line, "")
 
+	// fmt.Println("card:", line)
+
 	// value
 
 	transaction.Amount = parseRegex(line, regexValue)
 	line = regexValue.ReplaceAllString(line, "")
+
+	// fmt.Println("value:", line)
 
 	// payee
 
@@ -229,7 +239,7 @@ func parseRegex(t string, re *regexp.Regexp) string {
 	matches := re.FindStringSubmatch(t)
 	switch len(matches) {
 	case 2:
-		return matches[1]
+		return strings.Replace(matches[1], space, coma, 1)
 	case 3:
 		return fmt.Sprintf("%s/%s", matches[1], matches[2])
 	default:
