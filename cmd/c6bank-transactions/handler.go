@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 
 const (
 	qifMIME       = "text/qif"
+	csvMIME       = "text/csv"
 	maxUploadSize = 32 << 20
 )
 
@@ -58,7 +58,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, err := parser.Parse(filename, file, fileHeader.Size, number, invoiceRef)
+	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number, invoiceRef)
 	if err != nil {
 		fmt.Printf("ERROR file=%q ref=%q - %s\n", filename, invoiceRef, err)
 		http.Error(w, fmt.Sprintf("could not parse %s: %s", filename, err), http.StatusBadRequest)
@@ -66,10 +66,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outputname := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".qif"
 	log.Printf("%s INFO received upload %s of type %s and parsed as %s\n", time.Now().Format(time.RFC3339), filename, filetype, outputname)
 
-	w.Header().Set("Content-Type", qifMIME)
+	contentType := qifMIME
+	if strings.HasSuffix(outputname, ".csv") {
+		contentType = csvMIME
+	}
+
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment;filename="%s"`, outputname))
 
 	_, err = io.Copy(w, output)
