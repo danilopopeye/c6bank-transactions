@@ -246,20 +246,3 @@ func parseRegex(t string, re *regexp.Regexp) string {
 		return ""
 	}
 }
-
-func __parseDate(t string) string {
-	now := time.Now()
-	year := now.Format("2006")
-
-	date := t[:5]
-	month, err := strconv.Atoi(t[3:5])
-	if err != nil {
-		return ""
-	}
-
-	if month > int(now.Month()) {
-		year = now.AddDate(-1, 0, 0).Format("2006")
-	}
-
-	return fmt.Sprintf("%s/%s", date, year)
-}
