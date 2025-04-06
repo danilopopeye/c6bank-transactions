@@ -31,7 +31,7 @@ var (
 type MockTime struct{}
 
 func (MockTime) Now() time.Time {
-	return time.Date(1985, time.August, 5, 0, 0, 0, 0, time.Local)
+	return time.Date(1985, time.August, 5, 0, 0, 0, 0, time.UTC)
 }
 
 func TestScanImageLines(t *testing.T) {
@@ -45,15 +45,9 @@ func TestScanImageLines(t *testing.T) {
 	transactions := [][]string{
 		{"1985-08-01", "COMPRA A VISTA", "4321 09/1985", "167,91", "false", "false"},
 		{"1985-08-02", "NOVO PARCELAMENTO", "1/4 4321 09/1985", "70,75", "true", "false"},
-		// {"1985-08-03", "PARCELAMENTO ANTIGO", "3/7 1234 09/1985", "123,45", "true", "false"},
-
 		{"1985-09-02", "NOVO PARCELAMENTO", "2/4 4321 10/1985", "70,75", "true", "true"},
 		{"1985-10-02", "NOVO PARCELAMENTO", "3/4 4321 11/1985", "70,75", "true", "true"},
-		{"1985-11-01", "NOVO PARCELAMENTO", "4/4 4321 12/1985", "70,75", "true", "true"}, // this one is strange
-		// {"1985-09-03", "PARCELAMENTO ANTIGO", "4/7 1234 10/1985", "123,45", "true", "true"},
-		// {"1985-10-03", "PARCELAMENTO ANTIGO", "5/7 1234 11/1985", "123,45", "true", "true"},
-		// {"1985-11-03", "PARCELAMENTO ANTIGO", "6/7 1234 12/1985", "123,45", "true", "true"},
-		// {"1985-12-03", "PARCELAMENTO ANTIGO", "7/7 1234 01/1986", "123,45", "true", "true"},
+		{"1985-11-02", "NOVO PARCELAMENTO", "4/4 4321 12/1985", "70,75", "true", "true"},
 	}
 
 	assert.Len(t, lines, len(transactions))
@@ -65,14 +59,16 @@ func TestScanImageLines(t *testing.T) {
 	// assert.Equal(t, 5, strings.Count(content, tOld))
 
 	for i, line := range lines {
-		transaction := transactions[i]
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			transaction := transactions[i]
 
-		assert.Equal(t, transaction[0], line.Date.Format(time.DateOnly))
-		assert.Equal(t, transaction[1], line.Payee)
-		assert.Equal(t, transaction[2], line.Memo)
-		assert.Equal(t, transaction[3], line.Amount)
-		assert.Equal(t, transaction[4], fmt.Sprint(line.Installment))
-		assert.Equal(t, transaction[5], fmt.Sprint(line.Future))
+			assert.Equal(t, transaction[0], line.Date.UTC().Format(time.DateOnly))
+			assert.Equal(t, transaction[1], line.Payee)
+			assert.Equal(t, transaction[2], line.Memo)
+			assert.Equal(t, transaction[3], line.Amount)
+			assert.Equal(t, transaction[4], fmt.Sprint(line.Installment))
+			assert.Equal(t, transaction[5], fmt.Sprint(line.Future))
+		})
 	}
 }
 
