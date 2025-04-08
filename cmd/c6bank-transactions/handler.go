@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
-	"path/filepath"
 	"strings"
+	"time"
 
 	"git.home/c6bank-transactions/internal/parser"
 )
 
 const (
-	qifMIME = "text/qif"
+	qifMIME       = "text/qif"
+	csvMIME       = "text/csv"
+	maxUploadSize = 32 << 20
 )
 
 //go:embed index.html
@@ -22,92 +23,85 @@ var indexHTML []byte
 
 func indexHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
-	_, err := w.Write(indexHTML)
-	if err != nil {
+
+	if _, err := w.Write(indexHTML); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
-	var invoiceRef string
-	installmentH := "current_month"
-
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 32 MB is the default used by FormFile
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+
 		return
 	}
 
-	// get a reference to the fileHeaders
-
-	files, ok := r.MultipartForm.File["file"]
-	if !ok {
-		http.Error(w, "missing `file` param", http.StatusBadRequest)
-		return
-	}
-	file := files[0]
-
-	// get invoice month if given
-	if invoiceReference, ok := r.MultipartForm.Value["invoice_reference"]; ok {
-		invoiceRef = invoiceReference[0]
+	if err := validate(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	// installments handling options
-	if installmentHandling, ok := r.MultipartForm.Value["installment_handler"]; ok {
-		if installmentHandling[0] == "all" {
-			installmentH = installmentHandling[0]
-		}
-	}
+	number := r.PostFormValue("number")
+	invoiceRef := r.PostFormValue("invoice_reference")
 
-	number, ok := r.MultipartForm.Value["number"]
-	if !ok || len(number) > 1 {
-		http.Error(w, "field `number` should by unique or empty", http.StatusBadRequest)
-		return
-	}
-
-	if file.Size > MAX_UPLOAD_SIZE {
-		http.Error(w, fmt.Sprintf("The uploaded image is too big: %s. Please use an image less than 10MB in size", file.Filename), http.StatusBadRequest)
-		return
-	}
-
-	body, err := file.Open()
+	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
 		return
 	}
-	defer body.Close()
 
-	filetype, err := validateUploadFile(file.Filename, body)
+	filename := fileHeader.Filename
+
+	filetype, err := validateUploadFile(fileHeader.Filename, file)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	output, err := parser.Parse(file.Filename, body, file.Size, number[0], invoiceRef, installmentH)
+	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number, invoiceRef)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("could not parse %s: %s", file.Filename, err), http.StatusBadRequest)
+		fmt.Printf("ERROR file=%q ref=%q - %s\n", filename, invoiceRef, err)
+		http.Error(w, fmt.Sprintf("could not parse %s: %s", filename, err), http.StatusBadRequest)
+
 		return
 	}
 
-	filename := strings.TrimSuffix(file.Filename, filepath.Ext(file.Filename)) + ".qif"
-	log.Printf("INFO received upload %s of type %s and parsed as %s\n", file.Filename, filetype, filename)
+	log.Printf("%s INFO received upload %s of type %s and parsed as %s\n", time.Now().Format(time.RFC3339), filename, filetype, outputname)
 
-	w.Header().Set("Content-Type", qifMIME)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment;filename="%s"`, filename))
+	contentType := qifMIME
+	if strings.HasSuffix(outputname, ".csv") {
+		contentType = csvMIME
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment;filename="%s"`, outputname))
 
 	_, err = io.Copy(w, output)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("cloud not write response: %s", err), http.StatusBadRequest)
+
 		return
 	}
 }
 
-func validateUploadFile(name string, file multipart.File) (string, error) {
+func validate(r *http.Request) error {
+	if r.Method != "POST" {
+		return fmt.Errorf("method %q not allowed", r.Method)
+	}
+
+	files, ok := r.MultipartForm.File["file"]
+	if !ok || len(files) != 1 {
+		return fmt.Errorf("%w: expected one `file` param", http.ErrMissingFile)
+	}
+
+	if files[0].Size > MAX_UPLOAD_SIZE {
+		return fmt.Errorf("the uploaded image %q is too big. Please use an image less than 10MB in size", files[0].Filename)
+	}
+
+	return nil
+}
+
+func validateUploadFile(name string, file io.ReadSeeker) (string, error) {
 	buff := make([]byte, 512)
 	if _, err := file.Read(buff); err != nil {
 		return "", err
@@ -120,5 +114,6 @@ func validateUploadFile(name string, file multipart.File) (string, error) {
 	}
 
 	_, err := file.Seek(0, io.SeekStart)
+
 	return filetype, err
 }

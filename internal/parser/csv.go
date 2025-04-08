@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -14,11 +15,13 @@ import (
 
 const (
 	dateFormat = "02/01/2006"
+	refFormat  = "01/2006"
 	minus      = '-'
 	fee        = "ANUIDADE DIFERENCIADA"
+	unique     = "Única"
 )
 
-func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]Line, error) {
+func scanCSVRows(reference time.Time, file io.Reader) ([]Line, error) {
 	csvReader := csv.NewReader(file)
 	csvReader.Comma = ';'
 
@@ -37,25 +40,22 @@ func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]Line
 			return nil, err
 		}
 
-		if record[8][0] == minus {
-			record[8] = record[8][1:]
-		} else {
-			record[8] = fmt.Sprintf("-%s", record[8])
-		}
+		fixValue(&record[8])
 
-		if record[5] == "Única" {
-			record[5] = ""
-		} else if strings.ToUpper(record[4]) == fee {
-			// INFO do not handle installments
+		if record[5] == unique {
+			record[5] = parseMemo(reference, record[2], 0, 0)
 		} else {
-			if err := handleInstallments(record, &lines, invoiceRef, installmentH); err != nil {
+			if err = handleInstallments(reference, record, &lines); err != nil {
 				return nil, err
 			}
 
 			continue
 		}
 
-		addInvoiceReference(&record[5], invoiceRef)
+		date, err := time.Parse(dateFormat, record[0])
+		if err != nil || date.IsZero() {
+			continue // Skip appending if the date is empty or invalid
+		}
 
 		lines = append(lines, Line{record[0], record[4], record[5], record[8]})
 	}
@@ -63,8 +63,8 @@ func scanCSVRows(file io.Reader, invoiceRef string, installmentH string) ([]Line
 	return lines, nil
 }
 
-func handleInstallments(record []string, lines *[]Line, invoiceRef string, installmentH string) error {
-	purchase, payee, installment, value := record[0], record[4], record[5], record[8]
+func handleInstallments(reference time.Time, record []string, lines *[]Line) error {
+	purchase, card, payee, installment, value := record[0], record[2], record[4], record[5], record[8]
 
 	parts := strings.SplitN(installment, "/", 2)
 
@@ -83,39 +83,75 @@ func handleInstallments(record []string, lines *[]Line, invoiceRef string, insta
 		return err
 	}
 
-	if installmentH == "current_mont" {
-		if current > 1 {
-			addInvoiceReference(&installment, invoiceRef)
+	if current > 1 {
+		dateFixed := date.AddDate(0, current-1, 0)
+		*lines = append(*lines, Line{
+			dateFixed.Format(dateFormat), payee, parseMemo(reference, card, current, total),
+			value,
+		})
 
-			dateFixed := date.AddDate(0, current-1, 0)
-			*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, installment, value})
-
-			return nil
-		}
+		return nil
 	}
 
-	var future string
-
-	addInvoiceReference(&future, invoiceRef)
-
 	for ; current <= total; current++ {
+		ref := reference.AddDate(0, current-1, 0)
 		dateFixed := date.AddDate(0, current-1, 0)
-		memo := fmt.Sprintf("%d/%d - %s", current, total, future)
+		memo := fmt.Sprintf("%d/%d %s %02d/%04d", current, total, card, ref.Month(), ref.Year())
+
 		*lines = append(*lines, Line{dateFixed.Format(dateFormat), payee, memo, value})
-		// future = " futuro"
 	}
 
 	return nil
 }
 
-func addInvoiceReference(origin *string, invoiceRef string) {
+func fixValue(value *string) {
+	runes := []rune(*value)
 
-	if len(invoiceRef) > 0 {
-		if len(*origin) > 0 {
-			*origin = fmt.Sprintf("%s - %s", *origin, invoiceRef)
-		} else {
-			*origin = invoiceRef
+	if runes[0] == minus {
+		*value = string(runes[1:])
+	} else {
+		*value = "-" + *value
+	}
+}
+
+func parseMemo(ref time.Time, card string, current, total int) string {
+	var buf strings.Builder
+
+	if current > 0 && total > 0 {
+		buf.WriteString(fmt.Sprintf("%d/%d ", current, total))
+	}
+
+	buf.WriteString(card)
+
+	if !ref.IsZero() {
+		buf.WriteString(" ")
+		buf.WriteString(ref.Format(refFormat))
+	}
+
+	return buf.String()
+}
+
+func TransactionsToCSV(transactions []Transaction) (io.Reader, error) {
+	buf := new(bytes.Buffer)
+
+	writer := csv.NewWriter(buf)
+	// writer.Comma = ';'
+
+	if err := writer.Write([]string{"Date", "Payee", "Memo", "Value"}); err != nil {
+		return nil, err
+	}
+
+	for _, ts := range transactions {
+		if err := writer.Write(ts.CSVLine()); err != nil {
+			return nil, err
 		}
 	}
 
+	writer.Flush()
+
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }
