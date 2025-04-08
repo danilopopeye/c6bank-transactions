@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -38,12 +39,19 @@ func (t *Transaction) ParseDate(ct CurrentTime, date string) error {
 				return err
 			}
 
-			month = (month + installment) % 12
+			installmentDate, err := time.Parse(dateFormat, fmt.Sprintf("%s/%d", date, year))
+			if err != nil {
+				return err
+			}
+
+			t.Date = installmentDate.AddDate(0, installment, 0)
+
+			return nil
 		}
-	} else {
-		if month > int(now.Month()) {
-			year = now.AddDate(-1, 0, 0).Year()
-		}
+	}
+
+	if month > int(now.Month()) {
+		year = now.AddDate(-1, 0, 0).Year()
 	}
 
 	t.Date = time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)

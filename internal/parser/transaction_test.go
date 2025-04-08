@@ -23,11 +23,15 @@ func TestTransaction_ParseDate(t *testing.T) {
 		{name: "later same year", date: "21/09", expected: "1984-09-21"},
 		{
 			name: "first installment", date: "21/08", expected: "1985-08-21",
-			transaction: parser.Transaction{Installment: true, Memo: "1/4 4321 01/1985"},
+			transaction: parser.Transaction{Installment: true, Memo: "1/4 4321 01/1970"},
 		},
 		{
 			name: "old installment", date: "21/05", expected: "1985-08-21",
-			transaction: parser.Transaction{Installment: true, Memo: "3/4 4321 01/1985"},
+			transaction: parser.Transaction{Installment: true, Memo: "3/4 4321 01/1970"},
+		},
+		{
+			name: "new year", date: "21/07", expected: "1986-03-21",
+			transaction: parser.Transaction{Installment: true, Memo: "8/12 4321 01/1970"},
 		},
 	}
 
