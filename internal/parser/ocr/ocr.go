@@ -18,7 +18,7 @@ func Parse(file io.Reader) (io.Reader, error) {
 		ocrError  bytes.Buffer
 	)
 
-	cmd := exec.Command(TesseractBin, "stdin", "stdout", "--psm", "4", "-l", "por", "-l", "eng")
+	cmd := exec.Command(TesseractBin, "stdin", "stdout", "--psm", "4", "-l", "por+eng")
 	cmd.Stdin = file
 	cmd.Stdout = &ocrOutput
 	cmd.Stderr = &ocrError
