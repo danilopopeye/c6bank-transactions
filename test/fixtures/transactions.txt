@@ -1,0 +1,27 @@
+01/01
+NOME DO Em processamento
+
+LUGAR  R$ 64,24
+Cartao final 1234
+
+
+__CURRENT__
+
+COMPRA A VISTA R$ 167,91
+Cartao final 4321
+
+
+__NEW__
+
+NOVO PARCELAMENTO
+Cartao final 4321
+
+R$ 70,75
+Parcela 1 de 4
+
+
+__OLD__ PARCELAMENTO ANTIGO
+Cartao final 1234
+
+R$ 123,45
+Parcela 3 de 7

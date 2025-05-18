@@ -2,38 +2,39 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="A service that apply some fixes to C6 Bank transactions." />
   <title>C6 Bank transactions</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.classless.blue.min.css" />
 </head>
 
 <body>
+  <main>
+    <h1>C6 Bank Transactions</h1>
 
-  <form id="form" enctype="multipart/form-data" action="/upload" method="POST">
-    <p><input class="input file-input" type="file" name="file" accept="application/pdf,text/csv,image/jpeg" /></p>
-    
-    <p>
-      <input id="invoice_reference" type="text" maxlength="20" name="invoice_reference" size="10" />
-      <label for="invoice_reference">referencia da fatura</label>
-    </p>
-    
-    <p>
-      <input id="number" type="text" maxlength="6" name="number" size="6" />
-      <label for="number">4 dígitos cartão (somente para PDF)</label>
-    </p>
-  
-    <p><strong>Gerar transações futuras de compras parceladas:</strong></p>
-    <p class="radio-options">
-      <input type="radio" id="current_month" name="installment_handler" value="current_month" checked />
-      <label for="current_month">Iniciadas neste mês</label>
-      <input type="radio" id="all" name="installment_handler" value="all" />
-      <label for="all">Todas</label>
-    </p>
-  
-    <button class="button" type="submit">Enviar</button>
-  </form>
-  
+    <section id="form">
+      <form enctype="multipart/form-data" action="/upload" method="POST">
+        <p>
+        </p>
+
+        <p>
+          <label for="invoice_reference">Referência da fatura (mm/yyyy)</label>
+          <input id="invoice_reference" type="date" minlength="7" maxlength="10" name="invoice_reference" required />
+        </p>
+
+        <input class="input file-input" type="file" name="file" accept="text/csv,image/jpg,image/jpeg,image/png"
+          required />
+
+        <button class="button" type="submit">Enviar</button>
+      </form>
+    </section>
+  </main>
+  <script type="text/javascript">
+    document.getElementById('invoice_reference').valueAsDate = new Date();
+  </script>
 </body>
 
 </html>
