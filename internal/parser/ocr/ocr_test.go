@@ -15,34 +15,34 @@ const parsedText = `30/01
 ESQUINA LISBOA Em processamento
 
 LANCHON SAO PAU R$ 64,24
-Cartao final 6137
+Cartão final 6137
 
 30/01
 E-GR COMERCI*EGR Em processamento
 
 R$ 48,03
 Comer SAO PAU Parcela 1 de 2
-Cartao final 4432
+Cartão final 4432
 
 29/01
 
 MP *ALIEXPRESS R$ 167,91
-Cartao final 4432
+Cartão final 4432
 
 29/01
 
 VENUTO R$ 92,21
-Cartao final 6137
+Cartão final 6137
 
 29/01
 
 DROGASIL1164 R$ 96,53
-Cartao final 8240
+Cartão final 8240
 
 29/01
 
 APPLE.COM/BILL R$ 14,90
-Cartao final 4432
+Cartão final 4432
 `
 
 func TestParse(t *testing.T) {
