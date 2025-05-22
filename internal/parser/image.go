@@ -23,6 +23,7 @@ const (
 	processingText   = "Em processamento"
 	installmentsText = "Parcela"
 	cardText         = "Cartao final"
+	cardTextAccent   = "Cartão final"
 	firstInstallment = "1/"
 	tesseractBin     = "/usr/bin/tesseract"
 )
@@ -31,7 +32,7 @@ var (
 	empty Transaction
 
 	regexDate         = regexp.MustCompile(`^(\d{2})\/(\d{2})\s*`)
-	regexCard         = regexp.MustCompile(`Cartao final\s*(\d+)`)
+	regexCard         = regexp.MustCompile(`Cart[aã]o final\s*(\d+)`)
 	regexValue        = regexp.MustCompile(`R\$\s*(-?[0-9.]+[, ]\d+)`)
 	regexInstallments = regexp.MustCompile(`Parcela.*(\d+)\s*de\s*(\d+)`)
 )
@@ -189,7 +190,7 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 
 	// card
 
-	if strings.Contains(line, cardText) {
+	if strings.Contains(line, cardText) || strings.Contains(line, cardTextAccent) {
 		transaction.Memo += parseRegex(line, regexCard) + space
 	}
 	line = regexCard.ReplaceAllString(line, "")
