@@ -41,7 +41,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	number := r.PostFormValue("number")
-	invoiceRef := r.PostFormValue("invoice_reference")
 
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
@@ -58,9 +57,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number, invoiceRef)
+	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number)
 	if err != nil {
-		fmt.Printf("ERROR file=%q ref=%q - %s\n", filename, invoiceRef, err)
+		fmt.Printf("ERROR file=%q: %s\n", filename, err)
 		http.Error(w, fmt.Sprintf("could not parse %s: %s", filename, err), http.StatusBadRequest)
 
 		return
