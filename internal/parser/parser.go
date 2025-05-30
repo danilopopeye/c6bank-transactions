@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,10 +12,12 @@ import (
 	"git.home/c6bank-transactions/internal/qif"
 )
 
+var ErrWrongCSVFilename = errors.New("the filename should be in the form Fatura_YYYY-MM-DD.csv")
+
 // Line is: date, payee, memo, value
 type Line [4]string
 
-func Parse(name string, file multipart.File, size int64, password string, invoiceRef string) (io.Reader, string, error) {
+func Parse(name string, file multipart.File, size int64, password string) (io.Reader, string, error) {
 	var (
 		err   error
 		qtype qif.QIFType
@@ -26,27 +29,33 @@ func Parse(name string, file multipart.File, size int64, password string, invoic
 	switch strings.ToLower(filepath.Ext(name)) {
 	case ".pdf":
 		qtype = qif.BankType
+
 		lines, err = scanPDFRows(file, password, size)
+		if err != nil {
+			return nil, "", err
+		}
 	case ".csv":
 		qtype = qif.CreditCardType
-		var reference time.Time
 
-		if strings.HasPrefix(name, "Fatura_") {
-			reference, err = time.Parse(time.DateOnly, name[7:17])
-			if err != nil {
-				return nil, "", fmt.Errorf("the filename should be in the form Fatura_YYYY-MM-DD.csv")
-			}
+		if len(name) != 21 || !strings.HasPrefix(name, "Fatura_") {
+			return nil, "", ErrWrongCSVFilename
+		}
+
+		reference, err := time.Parse(time.DateOnly, name[7:17])
+		if err != nil {
+			fmt.Printf("ERROR error parsing CSV filename %q: %v", name, err)
+
+			return nil, "", ErrWrongCSVFilename
 		}
 
 		lines, err = scanCSVRows(reference, file)
+		if err != nil {
+			return nil, "", err
+		}
 	case ".jpg", ".png":
-		return parseImages(outputname, file, invoiceRef)
+		return parseImages(outputname, file)
 	default:
 		return nil, "", fmt.Errorf("invalid file %s", name)
-	}
-
-	if err != nil {
-		return nil, "", err
 	}
 
 	output, err := qif.Parse(qtype, linesToTransactions(lines))
@@ -69,8 +78,8 @@ func linesToTransactions(lines []Line) []qif.Transaction {
 	return qt
 }
 
-func parseImages(name string, file io.ReadSeeker, invoiceRef string) (io.Reader, string, error) {
-	transactions, err := ScanImage(file, invoiceRef)
+func parseImages(name string, file io.ReadSeeker) (io.Reader, string, error) {
+	transactions, err := ScanImage(file)
 	if err != nil {
 		return nil, "", err
 	}

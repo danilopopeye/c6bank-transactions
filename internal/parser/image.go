@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -29,16 +30,23 @@ const (
 )
 
 var (
-	empty Transaction
+	ErrInvalidReference = fmt.Errorf("could not parse reference")
+	empty               Transaction
 
 	regexDate         = regexp.MustCompile(`^(\d{2})\/(\d{2})\s*`)
 	regexCard         = regexp.MustCompile(`Cart[aã]o final\s*(\d+)`)
 	regexValue        = regexp.MustCompile(`R\$\s*(-?[0-9.]+[, ]\d+)`)
 	regexInstallments = regexp.MustCompile(`Parcela.*(\d+)\s*de\s*(\d+)`)
+	regexReference    = regexp.MustCompile(`(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)`)
+
+	months = []string{
+		"", "janeiro", "fevereiro", "março", "abril", "maio",
+		"junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+	}
 )
 
-func ScanImage(file io.ReadSeeker, ref string) ([]Transaction, error) {
-	cropped, err := image.Crop(file)
+func ScanImage(file io.ReadSeeker) ([]Transaction, error) {
+	cropped, reference, err := image.Crop(file)
 	if err != nil {
 		return nil, err
 	}
@@ -48,10 +56,20 @@ func ScanImage(file io.ReadSeeker, ref string) ([]Transaction, error) {
 		return nil, err
 	}
 
-	return ScanImageLines(Time{}, text, ref)
+	refText, err := ocr.Parse(reference)
+	if err != nil {
+		return nil, err
+	}
+
+	month, err := ParseRef(refText)
+	if err != nil {
+		return nil, err
+	}
+
+	return ScanImageLines(Time{}, text, month)
 }
 
-func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, error) {
+func ScanImageLines(ct CurrentTime, text io.Reader, ref time.Time) ([]Transaction, error) {
 	var (
 		transactions []Transaction
 		current      string
@@ -59,11 +77,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 
 	reader := bufio.NewReader(text)
 
-	refTime, err := time.Parse(time.DateOnly, ref)
-	if err != nil {
-		return nil, err
-	}
-	refText := refTime.Format(refFormat)
+	refText := ref.Format(refFormat)
 
 	for {
 		line, err := reader.ReadString(lfRune)
@@ -94,7 +108,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref string) ([]Transaction, 
 		transactions = append(transactions, transaction)
 	}
 
-	installments, err := parseInstallments(transactions, refTime)
+	installments, err := parseInstallments(transactions, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -246,4 +260,27 @@ func parseRegex(t string, re *regexp.Regexp) string {
 	default:
 		return ""
 	}
+}
+
+func ParseRef(reference io.Reader) (time.Time, error) {
+	btext, err := io.ReadAll(reference)
+	if err != nil {
+		return time.Time{}, err
+	}
+	text := string(btext)
+
+	matches := regexReference.FindStringSubmatch(text)
+	if matches == nil {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidReference, text)
+	}
+
+	index := slices.Index(months, matches[1])
+	if index == -1 {
+		return time.Time{}, fmt.Errorf("%w: %s", ErrInvalidReference, text)
+	}
+
+	now := time.Now()
+
+	// TODO should handle next year
+	return time.Date(now.Year(), time.Month(index), 1, 0, 0, 0, 0, time.Local), nil
 }

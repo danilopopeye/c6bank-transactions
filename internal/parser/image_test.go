@@ -18,6 +18,7 @@ const (
 	tCurr = "COMPRA A VISTA"
 	tNew  = "NOVO PARCELAMENTO"
 	tOld  = "PARCELAMENTO ANTIGO"
+	tProc = "Em processamento"
 )
 
 var (
@@ -38,8 +39,9 @@ func TestScanImageLines(t *testing.T) {
 	t.Parallel()
 
 	text := transactionText(t)
+	ref := time.Date(1985, time.September, 1, 0, 0, 0, 0, time.UTC)
 
-	lines, err := parser.ScanImageLines(mockTime, text, "1985-09-01")
+	lines, err := parser.ScanImageLines(mockTime, text, ref)
 	require.NoError(t, err)
 
 	transactions := [][]string{
@@ -52,11 +54,11 @@ func TestScanImageLines(t *testing.T) {
 
 	assert.Len(t, lines, len(transactions))
 
-	content := fmt.Sprintf("%v", lines)
-
+	content := fmt.Sprint(lines)
 	assert.Equal(t, 1, strings.Count(content, tCurr))
 	assert.Equal(t, 4, strings.Count(content, tNew))
-	// assert.Equal(t, 5, strings.Count(content, tOld))
+	assert.NotContains(t, content, tOld)
+	assert.NotContains(t, content, tProc)
 
 	for i, line := range lines {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
@@ -106,15 +108,46 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseRef(t *testing.T) {
+	t.Parallel()
+
+	year := time.Now().Year()
+	march := time.Date(year, time.March, 1, 0, 0, 0, 0, time.Local)
+	january := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
+
+	tests := []struct {
+		name string
+		text string
+		ref  time.Time
+		err  error
+	}{
+		{"good ocr", "Fatura de março Aberta", march, nil},
+		{"ok ocr", "Fatura dejaneiro Aberta", january, nil},
+		{"bad ocr", "algo estranho aqui", time.Time{}, parser.ErrInvalidReference},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			reader := bytes.NewBufferString(test.text)
+			got, err := parser.ParseRef(reader)
+
+			assert.ErrorIs(t, err, test.err)
+			assert.Equal(t, test.ref, got)
+		})
+	}
+}
+
 func transactionText(t *testing.T) io.Reader {
 	t.Helper()
 
 	month := mockTime.Now().Month()
 	oldMonth := mockTime.Now().AddDate(0, -3, 0).Month()
 
-	curr := []byte(fmt.Sprintf("01/%02d", month))
-	inst := []byte(fmt.Sprintf("02/%02d", month))
-	old := []byte(fmt.Sprintf("03/%02d", oldMonth))
+	curr := fmt.Appendf(nil, "01/%02d", month)
+	inst := fmt.Appendf(nil, "02/%02d", month)
+	old := fmt.Appendf(nil, "03/%02d", oldMonth)
 
 	fixture, err := os.Open("../../test/fixtures/transactions.txt")
 	require.NoError(t, err)
