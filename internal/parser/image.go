@@ -33,6 +33,7 @@ var (
 	ErrInvalidReference = fmt.Errorf("could not parse reference")
 	empty               Transaction
 
+	regextMultiSpace  = regexp.MustCompile(`\s+`)
 	regexDate         = regexp.MustCompile(`^(\d{2})\/(\d{2})\s*`)
 	regexCard         = regexp.MustCompile(`Cart[aã]o final\s*(\d+)`)
 	regexValue        = regexp.MustCompile(`R\$\s*(-?[0-9.]+[, ]\d+)`)
@@ -220,7 +221,11 @@ func parseTransaction(ct CurrentTime, line, ref string) Transaction {
 
 	// payee
 
-	transaction.Payee = strings.TrimSpace(strings.ReplaceAll(line, lf, ""))
+	transaction.Payee = strings.TrimSpace(
+		regextMultiSpace.ReplaceAllString(
+			strings.ReplaceAll(line, lf, " "), space,
+		),
+	)
 
 	// memo
 

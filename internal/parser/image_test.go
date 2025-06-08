@@ -46,6 +46,7 @@ func TestScanImageLines(t *testing.T) {
 
 	transactions := [][]string{
 		{"1985-08-01", "COMPRA A VISTA", "4321 09/1985", "167,91", "false", "false"},
+		{"1985-08-01", "MULTI LINHA", "1234 09/1985", "123,45", "false", "false"},
 		{"1985-08-02", "NOVO PARCELAMENTO", "1/4 4321 09/1985", "70,75", "true", "false"},
 		{"1985-09-02", "NOVO PARCELAMENTO", "2/4 4321 10/1985", "70,75", "true", "true"},
 		{"1985-10-02", "NOVO PARCELAMENTO", "3/4 4321 11/1985", "70,75", "true", "true"},
