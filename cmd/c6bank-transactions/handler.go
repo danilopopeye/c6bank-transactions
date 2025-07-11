@@ -41,6 +41,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	number := r.PostFormValue("number")
+	includeProcessing := r.PostFormValue("include_processing") == "1"
 
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
@@ -57,7 +58,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number)
+	output, outputname, err := parser.Parse(filename, file, fileHeader.Size, number, includeProcessing)
 	if err != nil {
 		fmt.Printf("ERROR file=%q: %s\n", filename, err)
 		http.Error(w, fmt.Sprintf("could not parse %s: %s", filename, err), http.StatusBadRequest)

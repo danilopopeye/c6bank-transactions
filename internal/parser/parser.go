@@ -17,7 +17,7 @@ var ErrWrongCSVFilename = errors.New("the filename should be in the form Fatura_
 // Line is: date, payee, memo, value
 type Line [4]string
 
-func Parse(name string, file multipart.File, size int64, password string) (io.Reader, string, error) {
+func Parse(name string, file multipart.File, size int64, password string, includeProcessing bool) (io.Reader, string, error) {
 	var (
 		err   error
 		qtype qif.QIFType
@@ -53,7 +53,7 @@ func Parse(name string, file multipart.File, size int64, password string) (io.Re
 			return nil, "", err
 		}
 	case ".jpg", ".png":
-		return parseImages(outputname, file)
+		return parseImages(outputname, file, includeProcessing)
 	default:
 		return nil, "", fmt.Errorf("invalid file %s", name)
 	}
@@ -78,8 +78,8 @@ func linesToTransactions(lines []Line) []qif.Transaction {
 	return qt
 }
 
-func parseImages(name string, file io.ReadSeeker) (io.Reader, string, error) {
-	transactions, err := ScanImage(file)
+func parseImages(name string, file io.ReadSeeker, includeProcessing bool) (io.Reader, string, error) {
+	transactions, err := ScanImage(file, includeProcessing)
 	if err != nil {
 		return nil, "", err
 	}
