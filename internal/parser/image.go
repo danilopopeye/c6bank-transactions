@@ -46,7 +46,7 @@ var (
 	}
 )
 
-func ScanImage(file io.ReadSeeker) ([]Transaction, error) {
+func ScanImage(file io.ReadSeeker, includeProcessing bool) ([]Transaction, error) {
 	cropped, reference, err := image.Crop(file)
 	if err != nil {
 		return nil, err
@@ -67,10 +67,10 @@ func ScanImage(file io.ReadSeeker) ([]Transaction, error) {
 		return nil, err
 	}
 
-	return ScanImageLines(Time{}, text, month)
+	return ScanImageLines(Time{}, text, month, includeProcessing)
 }
 
-func ScanImageLines(ct CurrentTime, text io.Reader, ref time.Time) ([]Transaction, error) {
+func ScanImageLines(ct CurrentTime, text io.Reader, ref time.Time, includeProcessing bool) ([]Transaction, error) {
 	var (
 		transactions []Transaction
 		current      string
@@ -95,7 +95,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref time.Time) ([]Transactio
 		}
 
 		if len(current) > 0 && regexDate.MatchString(line) {
-			if transaction := parseTransaction(ct, current, refText); transaction != empty {
+			if transaction := parseTransaction(ct, current, refText, includeProcessing); transaction != empty {
 				transactions = append(transactions, transaction)
 			}
 
@@ -105,7 +105,7 @@ func ScanImageLines(ct CurrentTime, text io.Reader, ref time.Time) ([]Transactio
 		current += line
 	}
 
-	if transaction := parseTransaction(ct, current, refText); transaction != empty {
+	if transaction := parseTransaction(ct, current, refText, includeProcessing); transaction != empty {
 		transactions = append(transactions, transaction)
 	}
 
@@ -171,9 +171,13 @@ func parseInstannmentText(text string) (int, int, string, error) {
 	return current, total, parts[1], nil
 }
 
-func parseTransaction(ct CurrentTime, line, ref string) Transaction {
+func parseTransaction(ct CurrentTime, line, ref string, includeProcessing bool) Transaction {
 	if strings.Contains(line, processingText) {
-		return empty
+		if !includeProcessing {
+			return empty
+		}
+
+		line = strings.ReplaceAll(line, processingText, "")
 	}
 
 	// fmt.Println("line:", line)

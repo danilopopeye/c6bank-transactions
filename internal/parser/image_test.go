@@ -41,7 +41,7 @@ func TestScanImageLines(t *testing.T) {
 	text := transactionText(t)
 	ref := time.Date(1985, time.September, 1, 0, 0, 0, 0, time.UTC)
 
-	lines, err := parser.ScanImageLines(mockTime, text, ref)
+	lines, err := parser.ScanImageLines(mockTime, text, ref, false)
 	require.NoError(t, err)
 
 	transactions := [][]string{
@@ -73,6 +73,19 @@ func TestScanImageLines(t *testing.T) {
 			assert.Equal(t, transaction[5], fmt.Sprint(line.Future))
 		})
 	}
+
+	t.Run("include processing transactions", func(t *testing.T) {
+		t.Parallel()
+
+		text := transactionText(t)
+		ref := time.Date(1985, time.September, 1, 0, 0, 0, 0, time.UTC)
+
+		lines, err := parser.ScanImageLines(mockTime, text, ref, true)
+		require.NoError(t, err)
+
+		assert.Len(t, lines, 7)
+		assert.Equal(t, lines[0].Payee, "NOME DO LUGAR")
+	})
 }
 
 func TestParse(t *testing.T) {
