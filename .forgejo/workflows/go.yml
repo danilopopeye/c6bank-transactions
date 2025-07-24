@@ -1,0 +1,40 @@
+name: Golang
+
+on: 
+  pull_request:
+    
+jobs:
+
+  test:
+    runs-on: docker
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Set up sqlc
+        uses: https://github.com/sqlc-dev/setup-sqlc@v4
+        with:
+          sqlc-version: 1.26.0
+
+      - name: Display sqlc version
+        run: sqlc version
+
+      - name: Go Mod
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Go Generate & Vet
+        run: |
+          go generate ./... 
+          git diff --exit-code
+          go vet ./...
+
+      - name: Go Test
+        run: go test -count=1 -race -shuffle=on -coverprofile=coverage.txt ./...
+
+      - name: Go Coverage
+        run: go tool cover  --func coverage.txt | grep -v 100.0%
