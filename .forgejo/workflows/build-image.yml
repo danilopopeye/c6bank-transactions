@@ -28,4 +28,4 @@ jobs:
           context: .
           sbom: true
           provenance: mode=max
-          tags: ${{ forge.repository }}:latest
+          tags: ${{ vars.REGISTRY_URL }}/${{ forge.repository }}:latest
