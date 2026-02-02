@@ -19,6 +19,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", indexHandler)
+	mux.HandleFunc("/healthz", healthz)
 	mux.HandleFunc("/upload", uploadHandler)
 
 	host := getenv("HOST", "0.0.0.0")

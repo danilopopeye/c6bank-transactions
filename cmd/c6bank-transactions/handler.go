@@ -117,3 +117,8 @@ func validateUploadFile(name string, file io.ReadSeeker) (string, error) {
 
 	return filetype, err
 }
+
+func healthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("ok"))
+}
