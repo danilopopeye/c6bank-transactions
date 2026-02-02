@@ -1,0 +1,31 @@
+name: LLM Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  code-review:
+    runs-on: docker
+
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: code review
+        uses: https://git.home/danilo/forge-auto-code-review@v0.4.0 # we trust our own package
+        with:
+          repository_owner: ${{ forgejo.repository_owner }}
+          repository_name: ${{ forgejo.event.repository.name }}
+          pr_number: ${{ github.event.number }}
+
+          llm_api_endpoint: ${{ vars.LLM_API_ENDPOINT }}
+          llm_api_key: ${{ secrets.LLM_API_KEY }}
+          llm_model: ${{ vars.LLM_MODEL }}
+
+          max_review_lines: ${{ vars.MAX_REVIEW_LINES }}
+          review_language: ${{ vars.REVIEW_LANGUAGE }}
