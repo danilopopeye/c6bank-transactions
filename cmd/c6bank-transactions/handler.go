@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	ok            = "ok"
 	qifMIME       = "text/qif"
 	csvMIME       = "text/csv"
 	maxUploadSize = 32 << 20
@@ -116,4 +117,9 @@ func validateUploadFile(name string, file io.ReadSeeker) (string, error) {
 	_, err := file.Seek(0, io.SeekStart)
 
 	return filetype, err
+}
+
+func healthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.WriteString(w, ok)
 }
