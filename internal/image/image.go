@@ -97,14 +97,20 @@ func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 
 func GetPhone(img image.Image) (mobile.Phone, error) {
 	bounds := img.Bounds()
+	hasTransparency := HasTransparency(img)
 
 	// Check for iPhone Mirror: transparency + exact dimensions
-	if HasTransparency(img) && bounds.Max.X == 836 && bounds.Max.Y == 1840 {
+	if hasTransparency && bounds.Max.X == 836 && bounds.Max.Y == 1840 {
 		return mobile.IPhoneMirror, nil
 	}
 
 	// Regular dimension-based detection for other models
+	// Skip IPhoneMirror in the loop if no transparency (prevents false positives)
 	for _, phone := range mobile.Phones {
+		// Skip IPhoneMirror if no transparency - it requires BOTH transparency AND dimensions
+		if !hasTransparency && phone == mobile.IPhoneMirror {
+			continue
+		}
 		if bounds.Max.X == phone.Width && bounds.Max.Y == phone.Height {
 			return phone, nil
 		}

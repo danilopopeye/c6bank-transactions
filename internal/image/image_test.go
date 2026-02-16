@@ -209,3 +209,119 @@ func createMixedAlphaImage(t *testing.T, width, height int) image.Image {
 
 	return img
 }
+
+func TestGetPhone_IPhoneMirror(t *testing.T) {
+	t.Parallel()
+
+	t.Run("detects IPhoneMirror by transparency + dimensions", func(t *testing.T) {
+		t.Parallel()
+
+		// Create 836×1840 image with transparent first row
+		img := image.NewRGBA(image.Rect(0, 0, 836, 1840))
+		// Set first 10 pixels to transparent
+		for x := 0; x < 10; x++ {
+			img.Set(x, 0, color.RGBA{0, 0, 0, 0})
+		}
+
+		phone, err := subject.GetPhone(img)
+		require.NoError(t, err)
+		assert.Equal(t, mobile.IPhoneMirror, phone)
+	})
+
+	t.Run("rejects 836×1840 without transparency", func(t *testing.T) {
+		t.Parallel()
+
+		// Create 836×1840 image WITHOUT transparency
+		img := image.NewRGBA(image.Rect(0, 0, 836, 1840))
+		// Set first 10 pixels to opaque
+		for x := 0; x < 10; x++ {
+			img.Set(x, 0, color.RGBA{255, 255, 255, 255})
+		}
+
+		phone, err := subject.GetPhone(img)
+		assert.ErrorIs(t, err, subject.ErrUnsupportedPhone)
+		assert.Equal(t, mobile.Phone{}, phone)
+	})
+
+	t.Run("rejects transparent image with wrong dimensions", func(t *testing.T) {
+		t.Parallel()
+
+		// Create 100×100 image with transparent first row (wrong dimensions)
+		img := createTransparentImage(t, 100, 100, true)
+
+		phone, err := subject.GetPhone(img)
+		assert.ErrorIs(t, err, subject.ErrUnsupportedPhone)
+		assert.Equal(t, mobile.Phone{}, phone)
+	})
+}
+
+func TestCropMonth_MonthSize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("produces 100px for IPhoneMirror", func(t *testing.T) {
+		t.Parallel()
+
+		img := image.NewRGBA(image.Rect(0, 0, 836, 1840))
+		cropped := subject.CropMonth(img, mobile.IPhoneMirror)
+		bounds := cropped.Bounds().Max
+
+		assert.Equal(t, 836, bounds.X)
+		assert.Equal(t, 100, bounds.Y) // IPhoneMirror has MonthSize=100
+	})
+
+	t.Run("produces 150px for other models", func(t *testing.T) {
+		t.Parallel()
+
+		img := image.NewRGBA(image.Rect(0, 0, 1206, 2622))
+		cropped := subject.CropMonth(img, mobile.IPhone16Pro)
+		bounds := cropped.Bounds().Max
+
+		assert.Equal(t, 1206, bounds.X)
+		assert.Equal(t, 150, bounds.Y) // IPhone16Pro has MonthSize=150
+	})
+
+	t.Run("fallback to 150px when MonthSize is 0", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a phone with MonthSize=0 to test fallback
+		phone := mobile.Phone{Width: 100, Height: 200, MonthSize: 0}
+		img := image.NewRGBA(image.Rect(0, 0, 100, 200))
+		cropped := subject.CropMonth(img, phone)
+		bounds := cropped.Bounds().Max
+
+		assert.Equal(t, 100, bounds.X)
+		assert.Equal(t, 150, bounds.Y) // Should fallback to 150
+	})
+}
+
+func TestCrop_FullFlow(t *testing.T) {
+	t.Parallel()
+
+	t.Run("iPhone Mirror full flow", func(t *testing.T) {
+		t.Parallel()
+
+		// Create iPhone Mirror PNG with transparency
+		img := image.NewRGBA(image.Rect(0, 0, 836, 1840))
+		// Set first row transparent (iPhone Mirror signature)
+		for x := 0; x < 836; x++ {
+			img.Set(x, 0, color.RGBA{0, 0, 0, 0})
+		}
+
+		// Verify GetPhone detects IPhoneMirror
+		phone, err := subject.GetPhone(img)
+		require.NoError(t, err)
+		assert.Equal(t, mobile.IPhoneMirror, phone)
+
+		// Verify Crop produces correct regions
+		croppedImg := subject.CropImage(img, phone)
+		croppedMonth := subject.CropMonth(img, phone)
+
+		// Transaction area: 1840 - 600 - 180 = 1060px tall
+		assert.Equal(t, 836, croppedImg.Bounds().Max.X)
+		assert.Equal(t, 1060, croppedImg.Bounds().Max.Y)
+
+		// Month area: 100px tall (MonthSize)
+		assert.Equal(t, 836, croppedMonth.Bounds().Max.X)
+		assert.Equal(t, 100, croppedMonth.Bounds().Max.Y)
+	})
+}
