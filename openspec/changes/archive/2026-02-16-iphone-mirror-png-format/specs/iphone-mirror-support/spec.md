@@ -47,8 +47,6 @@ The system SHALL define IPhoneMirror with specific dimensions and region setting
 - **THEN** month region SHALL be 100 pixels tall
 - **AND** SHALL start at Y position 0 (top of image)
 
-## MODIFIED Requirements
-
 ### Requirement: Phone struct includes MonthSize field
 The `mobile.Phone` struct SHALL include `MonthSize int` field to support variable month region heights.
 
@@ -70,20 +68,15 @@ The `mobile.Phone` struct SHALL include `MonthSize int` field to support variabl
 ### Requirement: CropMonth uses phone-specific MonthSize
 The `CropMonth()` function SHALL use `phone.MonthSize` instead of global `mobile.MonthSize` constant.
 
-#### Scenario: Before (existing behavior)
-- **WHEN** CropMonth is called with any phone model
-- **THEN** it uses global `mobile.MonthSize` constant (150px)
-- **AND** all models produce same month region height
-
-#### Scenario: After (new behavior)
-- **WHEN** CropMonth is called with phone.MonthSize field
-- **THEN** it SHALL use `phone.MonthSize` parameter
-- **AND** IPhoneMirror produces 100px month region, others produce 150px
-
 #### Scenario: Backward compatibility
 - **WHEN** CropMonth is called with phone where MonthSize == 0
 - **THEN** it SHALL fallback to 150px (existing behavior)
 - **AND** SHALL NOT break existing functionality
+
+#### Scenario: IPhoneMirror produces 100px month region
+- **WHEN** CropMonth is called with IPhoneMirror
+- **THEN** it SHALL produce a 100px tall month region
+- **AND** other models produce 150px month region
 
 ### Requirement: GetPhone validates transparency
 The `GetPhone()` function SHALL call `HasTransparency()` at the start to detect iPhone Mirror format.
