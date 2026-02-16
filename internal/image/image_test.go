@@ -3,6 +3,7 @@ package image_test
 import (
 	"bytes"
 	"image"
+	"image/color"
 	"image/png"
 	"testing"
 
@@ -128,4 +129,83 @@ func buildImage(t *testing.T, phone mobile.Phone) image.Image {
 	t.Helper()
 
 	return image.Rect(0, 0, phone.Width, phone.Height)
+}
+
+func TestHasTransparency(t *testing.T) {
+	t.Parallel()
+
+	t.Run("all transparent pixels (alpha == 0)", func(t *testing.T) {
+		t.Parallel()
+
+		img := createTransparentImage(t, 100, 100, true)
+		assert.True(t, subject.HasTransparency(img))
+	})
+
+	t.Run("all opaque pixels (alpha > 0)", func(t *testing.T) {
+		t.Parallel()
+
+		img := createTransparentImage(t, 100, 100, false)
+		assert.False(t, subject.HasTransparency(img))
+	})
+
+	t.Run("mixed alpha values (1-254)", func(t *testing.T) {
+		t.Parallel()
+
+		img := createMixedAlphaImage(t, 100, 100)
+		assert.False(t, subject.HasTransparency(img))
+	})
+
+	t.Run("image too small (less than 10 pixels wide)", func(t *testing.T) {
+		t.Parallel()
+
+		img := createTransparentImage(t, 5, 100, true)
+		assert.False(t, subject.HasTransparency(img))
+	})
+
+	t.Run("image too small (less than 1 pixel tall)", func(t *testing.T) {
+		t.Parallel()
+
+		img := createTransparentImage(t, 100, 0, true)
+		assert.False(t, subject.HasTransparency(img))
+	})
+}
+
+// createTransparentImage creates a synthetic PNG image with transparent or opaque pixels.
+// Uses Go stdlib (image.NewRGBA, png.Encode) as per design decision.
+func createTransparentImage(t *testing.T, width, height int, transparent bool) image.Image {
+	t.Helper()
+
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	var c color.Color
+	if transparent {
+		c = color.RGBA{0, 0, 0, 0} // Fully transparent (alpha == 0)
+	} else {
+		c = color.RGBA{255, 255, 255, 255} // Fully opaque (alpha == 255)
+	}
+
+	// Fill entire image with the same color
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, c)
+		}
+	}
+
+	return img
+}
+
+// createMixedAlphaImage creates an image with varying alpha values (1-254).
+// Used to test strict zero check - should return false since not ALL pixels have alpha == 0.
+func createMixedAlphaImage(t *testing.T, width, height int) image.Image {
+	t.Helper()
+
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+
+	// Set first 10 pixels to various non-zero alpha values
+	for x := 0; x < 10 && x < width; x++ {
+		alpha := uint8(x + 1) // Alpha values 1-10
+		img.Set(x, 0, color.RGBA{255, 255, 255, alpha})
+	}
+
+	return img
 }
