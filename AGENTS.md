@@ -73,7 +73,6 @@ internal/                  # Application core packages
     └── qif_test.go       # QIF generation tests
 
 test/fixtures/            # Sample images and transaction data
-testdata/                 # Additional test images
 ```
 
 ## Key Components

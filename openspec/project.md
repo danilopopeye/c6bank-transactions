@@ -4,7 +4,7 @@
 C6 Bank Transactions is a Go web service that processes C6 Bank transaction statements and converts them to QIF/CSV formats for personal finance software. The application supports three input types: PDF statements, CSV files, and mobile screenshots (which require OCR processing).
 
 ## Tech Stack
-- Go 1.21+
+- Go 1.22+
 - Web Framework: Standard library `net/http`
 - PDF Processing: `github.com/ledongthuc/pdf`
 - OCR: Tesseract OCR with Portuguese+English language packs
