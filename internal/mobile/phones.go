@@ -38,9 +38,9 @@ var (
 
 	// IPhoneMirror: iPhone Mirror screenshots from macOS
 	// Dimensions: 836×1840 (smaller than physical screens)
-	// Regions: Header=600px, Footer=180px, Month starts at Y=0, MonthSize=100px
+	// Regions: Header=600px, Footer=180px, Month starts at Y=500, MonthSize=100px
 	// Characteristic: Transparent pixels at top (first row)
-	IPhoneMirror = Phone{836, 1840, 600, 180, 0, 100}
+	IPhoneMirror = Phone{836, 1840, 600, 180, 500, 100}
 
 	Phones = []Phone{IPhone13, IPhone13ProMax, IPhone15Pro, IPhone16Pro, IPhoneMirror}
 )

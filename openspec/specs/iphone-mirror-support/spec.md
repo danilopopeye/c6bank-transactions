@@ -42,13 +42,13 @@ The system SHALL define IPhoneMirror with specific dimensions and region setting
 
 #### Scenario: IPhoneMirror structure
 - **WHEN** IPhoneMirror is defined in `mobile/phones.go`
-- **THEN** it SHALL have `Width = 836, Height = 1840, Header = 600, Footer = 180, Month = 0, MonthSize = 100`
+- **THEN** it SHALL have `Width = 836, Height = 1840, Header = 600, Footer = 180, Month = 500, MonthSize = 100`
 - **AND** SHALL be added at the END of `mobile.Phones` array (fallback position)
 
 #### Scenario: MonthSize for IPhoneMirror
 - **WHEN** IPhoneMirror is used for cropping
 - **THEN** month region SHALL be 100 pixels tall
-- **AND** SHALL start at Y position 0 (top of image)
+- **AND** SHALL start at Y position 500
 
 ### Requirement: Phone struct includes MonthSize field
 The `mobile.Phone` struct SHALL include `MonthSize int` field to support variable month region heights.
