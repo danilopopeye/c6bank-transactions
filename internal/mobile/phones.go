@@ -11,10 +11,9 @@ type Phone struct {
 	Footer int
 	// Month is the Y-position (vertical offset) where the month reference region starts
 	Month int
-	// MonthSize is the height of the month region to extract (in pixels)
-	// - 100px for IPhoneMirror (smaller header area)
-	// - 150px for other iPhone models
-	// - 0 means use fallback default of 150px
+	// MonthSize is the height of the month region to extract (in pixels).
+	// Use 100px for IPhoneMirror or 150px for other models.
+	// If set to 0, defaults to MonthSize constant (150px) for backward compatibility.
 	MonthSize int
 }
 

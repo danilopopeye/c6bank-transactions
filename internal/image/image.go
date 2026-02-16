@@ -103,7 +103,7 @@ func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 
 // GetPhone detects the iPhone model from an image by dimensions and transparency.
 //
-// For iPhone Mirror (836×1840): requires BOTH transparency in first row AND exact dimensions.
+// For iPhone Mirror: requires BOTH transparency in first row AND exact dimensions.
 // For other models: dimension-based detection using the Phones array.
 //
 // Returns the detected Phone model or ErrUnsupportedPhone if no match found.
@@ -112,7 +112,8 @@ func GetPhone(img image.Image) (mobile.Phone, error) {
 	hasTransparency := HasTransparency(img)
 
 	// Check for iPhone Mirror: transparency + exact dimensions
-	if hasTransparency && bounds.Max.X == 836 && bounds.Max.Y == 1840 {
+	// Use IPhoneMirror constants instead of magic numbers
+	if hasTransparency && bounds.Max.X == mobile.IPhoneMirror.Width && bounds.Max.Y == mobile.IPhoneMirror.Height {
 		return mobile.IPhoneMirror, nil
 	}
 
@@ -141,12 +142,12 @@ func CropImage(img image.Image, phone mobile.Phone) *image.RGBA {
 
 // CropMonth extracts the month reference region from an image for OCR processing.
 // Uses phone.MonthSize if set (100px for IPhoneMirror, 150px for others).
-// Falls back to 150px if MonthSize is 0.
+// Falls back to mobile.MonthSize constant (150px) if MonthSize is 0.
 func CropMonth(img image.Image, phone mobile.Phone) *image.RGBA {
-	// Use phone.MonthSize if set, otherwise fallback to 150px
+	// Use phone.MonthSize if set, otherwise fallback to default
 	monthSize := phone.MonthSize
 	if monthSize == 0 {
-		monthSize = 150
+		monthSize = mobile.MonthSize
 	}
 	return cropImage(img, phone.Month, monthSize)
 }
