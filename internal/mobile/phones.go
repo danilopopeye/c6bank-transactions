@@ -1,10 +1,21 @@
 package mobile
 
+// Phone represents an iPhone model with screen dimensions and crop regions for transaction processing.
+// The struct stores dimensions and margins for smart image cropping to extract transaction data.
 type Phone struct {
-	Width, Height  int
-	Header, Footer int
-	Month          int
-	MonthSize      int // Height of month region to extract (100 for IPhoneMirror, 150 for others)
+	// Width, Height are the image dimensions in pixels
+	Width, Height int
+	// Header is the top margin to exclude (in pixels) when cropping transaction area
+	Header int
+	// Footer is the bottom margin to exclude (in pixels) when cropping transaction area
+	Footer int
+	// Month is the Y-position (vertical offset) where the month reference region starts
+	Month int
+	// MonthSize is the height of the month region to extract (in pixels)
+	// - 100px for IPhoneMirror (smaller header area)
+	// - 150px for other iPhone models
+	// - 0 means use fallback default of 150px
+	MonthSize int
 }
 
 const MonthSize = 150

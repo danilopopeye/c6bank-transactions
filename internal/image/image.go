@@ -37,6 +37,12 @@ func HasTransparency(img image.Image) bool {
 	return true
 }
 
+// Crop processes an image file and returns two cropped regions:
+//   - transaction area (excludes header and footer)
+//   - month reference area (for extracting reference date/month)
+//
+// The function detects the phone model automatically and crops accordingly.
+// Returns image readers for both regions and an error if processing fails.
 func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 	var img image.Image
 	var err error
@@ -95,6 +101,12 @@ func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 	return &imageBuf, &monthBuf, nil
 }
 
+// GetPhone detects the iPhone model from an image by dimensions and transparency.
+//
+// For iPhone Mirror (836×1840): requires BOTH transparency in first row AND exact dimensions.
+// For other models: dimension-based detection using the Phones array.
+//
+// Returns the detected Phone model or ErrUnsupportedPhone if no match found.
 func GetPhone(img image.Image) (mobile.Phone, error) {
 	bounds := img.Bounds()
 	hasTransparency := HasTransparency(img)
@@ -119,12 +131,17 @@ func GetPhone(img image.Image) (mobile.Phone, error) {
 	return mobile.Phone{}, ErrUnsupportedPhone
 }
 
+// CropImage extracts the transaction area from an image, excluding header and footer margins.
+// Returns an RGBA image containing only the transaction rows.
 func CropImage(img image.Image, phone mobile.Phone) *image.RGBA {
 	size := img.Bounds().Max.Y - phone.Header - phone.Footer
 
 	return cropImage(img, phone.Header, size)
 }
 
+// CropMonth extracts the month reference region from an image for OCR processing.
+// Uses phone.MonthSize if set (100px for IPhoneMirror, 150px for others).
+// Falls back to 150px if MonthSize is 0.
 func CropMonth(img image.Image, phone mobile.Phone) *image.RGBA {
 	// Use phone.MonthSize if set, otherwise fallback to 150px
 	monthSize := phone.MonthSize
@@ -134,6 +151,9 @@ func CropMonth(img image.Image, phone mobile.Phone) *image.RGBA {
 	return cropImage(img, phone.Month, monthSize)
 }
 
+// cropImage extracts a rectangular region from an image.
+// height: Y-position where extraction starts
+// size: height of the region to extract
 func cropImage(img image.Image, height, size int) *image.RGBA {
 	bounds := img.Bounds()
 	width := bounds.Max.X
