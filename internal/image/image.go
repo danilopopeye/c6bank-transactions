@@ -98,6 +98,12 @@ func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 func GetPhone(img image.Image) (mobile.Phone, error) {
 	bounds := img.Bounds()
 
+	// Check for iPhone Mirror: transparency + exact dimensions
+	if HasTransparency(img) && bounds.Max.X == 836 && bounds.Max.Y == 1840 {
+		return mobile.IPhoneMirror, nil
+	}
+
+	// Regular dimension-based detection for other models
 	for _, phone := range mobile.Phones {
 		if bounds.Max.X == phone.Width && bounds.Max.Y == phone.Height {
 			return phone, nil
@@ -114,7 +120,12 @@ func CropImage(img image.Image, phone mobile.Phone) *image.RGBA {
 }
 
 func CropMonth(img image.Image, phone mobile.Phone) *image.RGBA {
-	return cropImage(img, phone.Month, mobile.MonthSize)
+	// Use phone.MonthSize if set, otherwise fallback to 150px
+	monthSize := phone.MonthSize
+	if monthSize == 0 {
+		monthSize = 150
+	}
+	return cropImage(img, phone.Month, monthSize)
 }
 
 func cropImage(img image.Image, height, size int) *image.RGBA {
