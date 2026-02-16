@@ -15,6 +15,34 @@ import (
 
 var ErrUnsupportedPhone = errors.New("unsupported phone")
 
+// HasTransparency checks if the first 10 pixels of the first row have alpha == 0.
+// Used to detect iPhone Mirror screenshots which have a transparent header.
+// Returns true only if ALL 10 pixels are fully transparent (alpha == 0).
+func HasTransparency(img image.Image) bool {
+	bounds := img.Bounds()
+	if bounds.Max.X < 10 || bounds.Max.Y < 1 {
+		return false
+	}
+
+	// Check first 10 pixels of first row (y=0, x=0 to x=9)
+	for x := 0; x < 10; x++ {
+		c := img.At(x, 0)
+		_, _, _, a := c.RGBA()
+		// RGBA returns alpha in range 0..65535, where 0 is fully transparent
+		if a != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Crop processes an image file and returns two cropped regions:
+//   - transaction area (excludes header and footer)
+//   - month reference area (for extracting reference date/month)
+//
+// The function detects the phone model automatically and crops accordingly.
+// Returns image readers for both regions and an error if processing fails.
 func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 	var img image.Image
 	var err error
@@ -73,10 +101,29 @@ func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 	return &imageBuf, &monthBuf, nil
 }
 
+// GetPhone detects the iPhone model from an image by dimensions and transparency.
+//
+// For iPhone Mirror: requires BOTH transparency in first row AND exact dimensions.
+// For other models: dimension-based detection using the Phones array.
+//
+// Returns the detected Phone model or ErrUnsupportedPhone if no match found.
 func GetPhone(img image.Image) (mobile.Phone, error) {
 	bounds := img.Bounds()
+	hasTransparency := HasTransparency(img)
 
+	// Check for iPhone Mirror: transparency + exact dimensions
+	// Use IPhoneMirror constants instead of magic numbers
+	if hasTransparency && bounds.Max.X == mobile.IPhoneMirror.Width && bounds.Max.Y == mobile.IPhoneMirror.Height {
+		return mobile.IPhoneMirror, nil
+	}
+
+	// Regular dimension-based detection for other models
+	// Skip IPhoneMirror in the loop if no transparency (prevents false positives)
 	for _, phone := range mobile.Phones {
+		// Skip IPhoneMirror if no transparency - it requires BOTH transparency AND dimensions
+		if !hasTransparency && phone == mobile.IPhoneMirror {
+			continue
+		}
 		if bounds.Max.X == phone.Width && bounds.Max.Y == phone.Height {
 			return phone, nil
 		}
@@ -85,16 +132,29 @@ func GetPhone(img image.Image) (mobile.Phone, error) {
 	return mobile.Phone{}, ErrUnsupportedPhone
 }
 
+// CropImage extracts the transaction area from an image, excluding header and footer margins.
+// Returns an RGBA image containing only the transaction rows.
 func CropImage(img image.Image, phone mobile.Phone) *image.RGBA {
 	size := img.Bounds().Max.Y - phone.Header - phone.Footer
 
 	return cropImage(img, phone.Header, size)
 }
 
+// CropMonth extracts the month reference region from an image for OCR processing.
+// Uses phone.MonthSize if set (100px for IPhoneMirror, 150px for others).
+// Falls back to mobile.MonthSize constant (150px) if MonthSize is 0.
 func CropMonth(img image.Image, phone mobile.Phone) *image.RGBA {
-	return cropImage(img, phone.Month, mobile.MonthSize)
+	// Use phone.MonthSize if set, otherwise fallback to default
+	monthSize := phone.MonthSize
+	if monthSize == 0 {
+		monthSize = mobile.MonthSize
+	}
+	return cropImage(img, phone.Month, monthSize)
 }
 
+// cropImage extracts a rectangular region from an image.
+// height: Y-position where extraction starts
+// size: height of the region to extract
 func cropImage(img image.Image, height, size int) *image.RGBA {
 	bounds := img.Bounds()
 	width := bounds.Max.X
