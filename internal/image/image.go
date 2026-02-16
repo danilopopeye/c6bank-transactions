@@ -15,6 +15,28 @@ import (
 
 var ErrUnsupportedPhone = errors.New("unsupported phone")
 
+// HasTransparency checks if the first 10 pixels of the first row have alpha == 0.
+// Used to detect iPhone Mirror screenshots which have a transparent header.
+// Returns true only if ALL 10 pixels are fully transparent (alpha == 0).
+func HasTransparency(img image.Image) bool {
+	bounds := img.Bounds()
+	if bounds.Max.X < 10 || bounds.Max.Y < 1 {
+		return false
+	}
+
+	// Check first 10 pixels of first row (y=0, x=0 to x=9)
+	for x := 0; x < 10; x++ {
+		c := img.At(x, 0)
+		_, _, _, a := c.RGBA()
+		// RGBA returns alpha in range 0..65535, where 0 is fully transparent
+		if a != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
 func Crop(file io.ReadSeeker) (io.Reader, io.Reader, error) {
 	var img image.Image
 	var err error
