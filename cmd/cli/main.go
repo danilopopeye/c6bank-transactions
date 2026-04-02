@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -40,17 +41,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var all []parser.Transaction
+	paths := fs.Args()
 
-	for _, path := range fs.Args() {
+	for i, path := range paths {
+		fmt.Fprintf(stderr, "[%d/%d] Parsing %s...\n", i+1, len(paths), filepath.Base(path))
 		transactions, err := parser.ParseFile(path)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
+		fmt.Fprintf(stderr, "  found %d transaction(s)\n", len(transactions))
 		all = append(all, transactions...)
 	}
 
+	fmt.Fprintf(stderr, "Deduplicating %d transaction(s)...\n", len(all))
 	all = parser.Deduplicate(all)
+	fmt.Fprintf(stderr, "  %d unique transaction(s)\n", len(all))
 
 	slices.SortFunc(all, func(a, b parser.Transaction) int {
 		if a.Date.Before(b.Date) {
