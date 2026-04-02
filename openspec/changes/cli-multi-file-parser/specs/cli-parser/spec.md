@@ -20,13 +20,17 @@ The CLI SHALL accept one or more file paths as positional arguments. Each file S
 - **WHEN** user runs `cli data.xlsx`
 - **THEN** the CLI prints an error message indicating unsupported format and exits with code 1
 
+#### Scenario: One file fails among many
+- **WHEN** user runs `cli valid.pdf broken.csv valid.png` and the second file fails to parse
+- **THEN** the CLI prints an error for the failed file and exits with code 1 without producing output
+
 ### Requirement: CLI outputs CSV to stdout by default
 
-The CLI SHALL write CSV output to stdout. The CSV SHALL have a header row with columns: Date, Payee, Memo, Value.
+The CLI SHALL write CSV output to stdout. The CSV SHALL have a header row with columns: Date, Payee, Memo, Value. Transactions SHALL be sorted chronologically by date.
 
 #### Scenario: Output to stdout
 - **WHEN** user runs `cli transactions.pdf`
-- **THEN** CSV content is written to stdout with header row and transaction data
+- **THEN** CSV content is written to stdout with header row and transaction data sorted by date
 
 #### Scenario: Pipe to file
 - **WHEN** user runs `cli transactions.pdf > output.csv`
@@ -46,14 +50,14 @@ The CLI SHALL accept an `-o <path>` flag that writes CSV output to the specified
 
 ### Requirement: Transactions are deduplicated across files
 
-The CLI SHALL deduplicate transactions across all input files. Two transactions are considered duplicates if they have the same Date, Payee, and Amount.
+The CLI SHALL deduplicate transactions across all input files. Two transactions are considered duplicates if they have the same Date, Payee, Amount, and Memo.
 
 #### Scenario: Duplicate across two files
-- **WHEN** two files contain the same transaction (same date, payee, amount)
+- **WHEN** two files contain the same transaction (same date, payee, amount, memo)
 - **THEN** only one instance appears in the output CSV
 
 #### Scenario: No duplicates
-- **WHEN** no transactions share the same date, payee, and amount
+- **WHEN** no transactions share the same date, payee, amount, and memo
 - **THEN** all transactions appear in the output CSV
 
 ### Requirement: CLI reuses existing parser logic

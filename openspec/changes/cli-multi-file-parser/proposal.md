@@ -6,7 +6,9 @@ The current application is an HTTP server that processes C6 Bank transaction fil
 
 - Add a new CLI entry point (`cmd/cli`) that accepts one or more file paths as arguments
 - Reuse the existing parser package (`internal/parser`) to parse each file into transactions
-- Deduplicate transactions across files (same transaction may appear in multiple files)
+- Deduplicate transactions across files by Date+Payee+Amount+Memo (same transaction may appear in multiple files)
+- Fail fast: if any file fails to parse, the entire CLI exits with an error
+- Sort output chronologically by transaction date
 - Output a single CSV file with all accumulated transactions to stdout or a specified output file
 - Support the same input formats already handled by the parser: PDF, CSV, and mobile screenshots (PNG/JPG)
 
@@ -23,5 +25,5 @@ _(none — this is a new entry point that reuses existing parser internals)_
 
 - **New code**: `cmd/cli/` directory with CLI entry point
 - **Dependencies**: May need a CLI argument parsing library or use `flag` stdlib
-- **Existing packages**: `internal/parser` consumed as a library (no changes expected)
+- **Existing packages**: `internal/parser` will receive two new exported functions (`ParseFile`, `Deduplicate`)
 - **Build**: New binary target in addition to the existing web server

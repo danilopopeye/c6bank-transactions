@@ -9,7 +9,7 @@ Currently the `Parse()` function couples file reading (via `multipart.File`) wit
 **Goals:**
 - Provide a CLI that accepts multiple file paths as positional arguments
 - Parse each file using existing format-specific scanners
-- Deduplicate transactions by hash (Date + Payee + Amount)
+- Deduplicate transactions by hash (Date + Payee + Amount + Memo)
 - Output a single CSV to stdout (or a file via `-o` flag)
 
 **Non-Goals:**
@@ -42,15 +42,33 @@ Currently the `Parse()` function couples file reading (via `multipart.File`) wit
 
 ### 4. Deduplication via FNV-1a hash
 
-**Decision**: Use the existing FNV-1a hash approach (Date + Payee + Amount) to identify and remove duplicate transactions.
+**Decision**: Use the existing FNV-1a hash approach (Date + Payee + Amount + Memo) to identify and remove duplicate transactions.
 
-**Rationale**: The same transaction can appear in overlapping statements. The project already depends on `github.com/segmentio/fasthash/fnv1a`.
+**Rationale**: The same transaction can appear in overlapping statements. Including Memo avoids collapsing distinct transactions that share date/payee/amount. The project already depends on `github.com/segmentio/fasthash/fnv1a`.
 
 ### 5. Output to stdout by default, `-o` flag for file
 
 **Decision**: Write CSV to stdout. Optional `-o <path>` flag writes to a file.
 
 **Rationale**: Unix convention — stdout allows piping. `-o` flag for convenience when users want to save directly.
+
+### 6. Fail-fast on any file error
+
+**Decision**: If any file fails to parse (missing, wrong format, validation error), the CLI exits immediately with a non-zero code.
+
+**Rationale**: Silent partial results could mislead users. Explicit failure lets them fix the problem and re-run.
+
+### 7. Chronological output ordering
+
+**Decision**: Sort accumulated transactions by date (chronological) before writing CSV.
+
+**Rationale**: Multi-file input produces interleaved transaction order. Chronological output is the natural expectation for financial data.
+
+### 8. No password-protected PDF support
+
+**Decision**: Pass empty string for the password parameter when calling `scanPDFRows`. Password-protected PDFs will fail with a clear error message.
+
+**Rationale**: Adds complexity (flag, prompting) for an uncommon CLI use case. Can be added later if needed.
 
 ## Risks / Trade-offs
 
