@@ -5,12 +5,12 @@ The current application is an HTTP server that processes C6 Bank transaction fil
 ## What Changes
 
 - Add a new CLI entry point (`cmd/cli`) that accepts one or more file paths as arguments
-- Reuse the existing parser package (`internal/parser`) to parse each file into transactions
+- Reuse the existing parser package (`internal/parser`) to parse each file into transactions (CSV and image formats only; PDF excluded from CLI)
 - Deduplicate transactions across files by Date+Payee+Amount+Memo (same transaction may appear in multiple files)
 - Fail fast: if any file fails to parse, the entire CLI exits with an error
 - Sort output chronologically by transaction date
 - Output a single CSV file with all accumulated transactions to stdout or a specified output file
-- Support the same input formats already handled by the parser: PDF, CSV, and mobile screenshots (PNG/JPG)
+- Support the same input formats already handled by the parser: CSV and mobile screenshots (PNG/JPG/JPEG)
 
 ## Capabilities
 

@@ -2,14 +2,14 @@
 
 ### Requirement: CLI accepts multiple file paths as arguments
 
-The CLI SHALL accept one or more file paths as positional arguments. Each file SHALL be parsed using the appropriate format handler based on file extension (.pdf, .csv, .jpg, .png).
+The CLI SHALL accept one or more file paths as positional arguments. Each file SHALL be parsed using the appropriate format handler based on file extension (.csv, .jpg, .jpeg, .png).
 
 #### Scenario: Single file argument
-- **WHEN** user runs `cli transactions.pdf`
-- **THEN** the CLI parses the PDF and outputs CSV with those transactions
+- **WHEN** user runs `cli Fatura_2026-01-15.csv`
+- **THEN** the CLI parses the CSV and outputs CSV with those transactions
 
 #### Scenario: Multiple file arguments
-- **WHEN** user runs `cli statement.pdf Fatura_2026-01-15.csv screenshot.png`
+- **WHEN** user runs `cli Fatura_2026-01-15.csv Fatura_2026-02-15.csv screenshot.png`
 - **THEN** the CLI parses all three files and outputs a single CSV with accumulated transactions
 
 #### Scenario: No file arguments
@@ -21,7 +21,7 @@ The CLI SHALL accept one or more file paths as positional arguments. Each file S
 - **THEN** the CLI prints an error message indicating unsupported format and exits with code 1
 
 #### Scenario: One file fails among many
-- **WHEN** user runs `cli valid.pdf broken.csv valid.png` and the second file fails to parse
+- **WHEN** user runs `cli valid.csv broken.csv valid.png` and the second file fails to parse
 - **THEN** the CLI prints an error for the failed file and exits with code 1 without producing output
 
 ### Requirement: CLI outputs CSV to stdout by default
@@ -29,11 +29,11 @@ The CLI SHALL accept one or more file paths as positional arguments. Each file S
 The CLI SHALL write CSV output to stdout. The CSV SHALL have a header row with columns: Date, Payee, Memo, Value. Transactions SHALL be sorted chronologically by date.
 
 #### Scenario: Output to stdout
-- **WHEN** user runs `cli transactions.pdf`
+- **WHEN** user runs `cli transactions.csv`
 - **THEN** CSV content is written to stdout with header row and transaction data sorted by date
 
 #### Scenario: Pipe to file
-- **WHEN** user runs `cli transactions.pdf > output.csv`
+- **WHEN** user runs `cli transactions.csv > output.csv`
 - **THEN** CSV content is written to the redirected file
 
 ### Requirement: CLI supports output file via flag
@@ -41,11 +41,11 @@ The CLI SHALL write CSV output to stdout. The CSV SHALL have a header row with c
 The CLI SHALL accept an `-o <path>` flag that writes CSV output to the specified file instead of stdout.
 
 #### Scenario: Output to file
-- **WHEN** user runs `cli -o result.csv statement.pdf Fatura_2026-01-15.csv`
+- **WHEN** user runs `cli -o result.csv Fatura_2026-01-15.csv Fatura_2026-02-15.csv`
 - **THEN** CSV content is written to `result.csv`
 
 #### Scenario: Output file path is directory
-- **WHEN** user runs `cli -o /tmp/ statement.pdf`
+- **WHEN** user runs `cli -o /tmp/ statement.csv`
 - **THEN** the CLI prints an error and exits with code 1
 
 ### Requirement: Transactions are deduplicated across files
@@ -62,11 +62,7 @@ The CLI SHALL deduplicate transactions across all input files. Two transactions 
 
 ### Requirement: CLI reuses existing parser logic
 
-The CLI SHALL use the existing format-specific scanners from `internal/parser` for PDF, CSV, and image parsing. No new parsing logic SHALL be introduced.
-
-#### Scenario: PDF parsing
-- **WHEN** user passes a .pdf file
-- **THEN** the CLI uses the existing PDF scanner to extract transactions
+The CLI SHALL use the existing format-specific scanners from `internal/parser` for CSV and image parsing. No new parsing logic SHALL be introduced.
 
 #### Scenario: CSV parsing
 - **WHEN** user passes a .csv file matching the `Fatura_YYYY-MM-DD.csv` naming convention
@@ -77,5 +73,5 @@ The CLI SHALL use the existing format-specific scanners from `internal/parser` f
 - **THEN** the CLI reports a filename validation error
 
 #### Scenario: Image parsing
-- **WHEN** user passes a .png or .jpg file
+- **WHEN** user passes a .png, .jpg, or .jpeg file
 - **THEN** the CLI uses the existing image scanner to extract transactions

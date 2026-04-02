@@ -30,9 +30,9 @@ Currently the `Parse()` function couples file reading (via `multipart.File`) wit
 
 ### 2. Reuse scanners directly, not `Parse()`
 
-**Decision**: Call `scanPDFRows`, `scanCSVRows`, and `ScanImage` directly instead of the high-level `Parse()` function.
+**Decision**: Call `scanCSVRows` and `ScanImage` directly instead of the high-level `Parse()` function.
 
-**Rationale**: `Parse()` couples input (multipart.File) with output (QIF generation). The CLI needs the raw `[]Line` or `[]Transaction` data to accumulate across files. The scanners are already unexported but in the same package — we will expose new exported functions that wrap them for CLI use.
+**Rationale**: `Parse()` couples input (multipart.File) with output (QIF generation). The CLI needs the raw `[]Line` or `[]Transaction` data to accumulate across files. The scanners are already unexported but in the same package — we will expose new exported functions that wrap them for CLI use. PDF support was excluded from the CLI to keep the binary focused on the most common batch processing formats (CSV and mobile screenshots).
 
 ### 3. Exported function `ParseFile(path string) ([]Transaction, error)`
 
@@ -64,14 +64,8 @@ Currently the `Parse()` function couples file reading (via `multipart.File`) wit
 
 **Rationale**: Multi-file input produces interleaved transaction order. Chronological output is the natural expectation for financial data.
 
-### 8. No password-protected PDF support
-
-**Decision**: Pass empty string for the password parameter when calling `scanPDFRows`. Password-protected PDFs will fail with a clear error message.
-
-**Rationale**: Adds complexity (flag, prompting) for an uncommon CLI use case. Can be added later if needed.
-
 ## Risks / Trade-offs
 
 - **Unexported scanners**: Need to either export them or create a new exported wrapper. Creating a wrapper is cleaner but adds a function to the parser package API. → *Mitigation*: Single `ParseFile()` function keeps the surface small.
 - **CSV filename validation**: `scanCSVRows` requires filename in `Fatura_YYYY-MM-DD.csv` format. For CLI usage, the filename comes from the file path, which should work naturally if users pass properly named files. → *Mitigation*: Document the naming requirement in CLI help text.
-- **No glob expansion**: Users must pass explicit file paths. Shell globbing (`*.pdf`) handles common cases. → *Acceptable trade-off*: Keeps implementation simple.
+- **No glob expansion**: Users must pass explicit file paths. Shell globbing (`*.csv`) handles common cases. → *Acceptable trade-off*: Keeps implementation simple.
