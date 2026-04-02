@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/segmentio/fasthash/fnv1a"
 )
 
 // ParseFile opens the file at path, detects its format by extension,
@@ -62,6 +64,29 @@ func ParseFile(path string) ([]Transaction, error) {
 	default:
 		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
+}
+
+// Deduplicate removes duplicate transactions based on Date+Payee+Amount+Memo.
+func Deduplicate(transactions []Transaction) []Transaction {
+	seen := make(map[uint64]struct{}, len(transactions))
+	result := make([]Transaction, 0, len(transactions))
+
+	for _, t := range transactions {
+		h := fnv1a.Init64
+		h = fnv1a.AddString64(h, t.Date.Format(dateFormat))
+		h = fnv1a.AddString64(h, t.Payee)
+		h = fnv1a.AddString64(h, t.Amount)
+		h = fnv1a.AddString64(h, t.Memo)
+
+		if _, exists := seen[h]; exists {
+			continue
+		}
+
+		seen[h] = struct{}{}
+		result = append(result, t)
+	}
+
+	return result
 }
 
 // linesToTypedTransactions converts []Line (string dates) to []Transaction (typed dates).
