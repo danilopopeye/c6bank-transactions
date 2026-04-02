@@ -85,9 +85,9 @@ func TestDeduplicate(t *testing.T) {
 	date := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
 
 	tests := []struct {
-		name        string
+		name         string
 		transactions []parser.Transaction
-		wantLen     int
+		wantLen      int
 	}{
 		{
 			name:         "empty input",
