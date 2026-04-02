@@ -1,6 +1,6 @@
 ## 1. Parser Package API
 
-- [ ] 1.1 Add exported `ParseFile(path string) ([]Transaction, error)` function to `internal/parser/` that opens a file, detects format by extension, calls the appropriate scanner, and returns `[]Transaction`
+- [x] 1.1 Add exported `ParseFile(path string) ([]Transaction, error)` function to `internal/parser/` that opens a file, detects format by extension, calls the appropriate scanner, and returns `[]Transaction`
 - [ ] 1.2 Add exported `Deduplicate(transactions []Transaction) []Transaction` function that removes duplicates using FNV-1a hash on Date+Payee+Amount+Memo
 - [ ] 1.3 Test `ParseFile` with each supported format (PDF, CSV, PNG) and error cases
 - [ ] 1.4 Test `Deduplicate` with overlapping and non-overlapping transactions
