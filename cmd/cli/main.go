@@ -12,30 +12,39 @@ import (
 )
 
 func main() {
-	output := flag.String("o", "", "output CSV file (defaults to stdout)")
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <file1> [file2 ...]\n", os.Args[0])
-		fmt.Fprintln(os.Stderr, "Parse C6 Bank transaction files into a single CSV.")
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Supported formats: CSV, PNG, JPG/JPEG")
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Flags:")
-		flag.PrintDefaults()
-	}
-	flag.Parse()
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
 
-	if flag.NArg() == 0 {
-		flag.Usage()
-		os.Exit(1)
+func run(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("cli", flag.ContinueOnError)
+	output := fs.String("o", "", "output CSV file (defaults to stdout)")
+
+	fs.Usage = func() {
+		fmt.Fprintf(stderr, "Usage: %s [flags] <file1> [file2 ...]\n", "cli")
+		fmt.Fprintln(stderr, "Parse C6 Bank transaction files into a single CSV.")
+		fmt.Fprintln(stderr)
+		fmt.Fprintln(stderr, "Supported formats: CSV, PNG, JPG/JPEG")
+		fmt.Fprintln(stderr)
+		fmt.Fprintln(stderr, "Flags:")
+		fs.PrintDefaults()
+	}
+
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	if fs.NArg() == 0 {
+		fs.Usage()
+		return 1
 	}
 
 	var all []parser.Transaction
 
-	for _, path := range flag.Args() {
+	for _, path := range fs.Args() {
 		transactions, err := parser.ParseFile(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
 		}
 		all = append(all, transactions...)
 	}
@@ -54,23 +63,25 @@ func main() {
 
 	r, err := parser.TransactionsToCSV(all)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error generating CSV: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "error generating CSV: %v\n", err)
+		return 1
 	}
 
-	var w io.Writer = os.Stdout
+	var w io.Writer = stdout
 	if *output != "" {
 		f, err := os.Create(*output)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(stderr, "error creating output file: %v\n", err)
+			return 1
 		}
 		defer f.Close()
 		w = f
 	}
 
 	if _, err := io.Copy(w, r); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing output: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "error writing output: %v\n", err)
+		return 1
 	}
+
+	return 0
 }
