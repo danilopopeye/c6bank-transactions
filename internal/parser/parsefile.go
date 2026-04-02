@@ -44,7 +44,7 @@ func ParseFile(path string) ([]Transaction, error) {
 		}
 		return txs, nil
 
-	case ".jpg", ".png":
+	case ".jpg", ".jpeg", ".png":
 		transactions, err := ScanImage(f, false)
 		if err != nil {
 			return nil, fmt.Errorf("parse image %s: %w", path, err)
