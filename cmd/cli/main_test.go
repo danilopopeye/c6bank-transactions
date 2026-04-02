@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,8 @@ func TestRun(t *testing.T) {
 		wantCode   int
 		wantErr    string
 		wantOutHas string
+		wantCount  int    // expected number of data rows (excluding header)
+		wantExact  string // must appear exactly once in output
 	}{
 		{
 			name:     "no args shows usage",
@@ -57,6 +60,8 @@ func TestRun(t *testing.T) {
 			},
 			wantCode:   0,
 			wantOutHas: "MERCADO EXTRA",
+			wantCount:  4, // same file twice, deduplicated back to 4 transactions
+			wantExact:  "MERCADO EXTRA", // must appear exactly once
 		},
 	}
 
@@ -75,6 +80,16 @@ func TestRun(t *testing.T) {
 
 			if tt.wantOutHas != "" {
 				assert.Contains(t, stdout.String(), tt.wantOutHas)
+			}
+
+			if tt.wantCount > 0 {
+				lines := strings.Count(stdout.String(), "\n") - 1 // exclude header
+				assert.Equal(t, tt.wantCount, lines, "expected %d data rows", tt.wantCount)
+			}
+
+			if tt.wantExact != "" {
+				assert.Equal(t, 1, strings.Count(stdout.String(), tt.wantExact),
+					"%q should appear exactly once (deduplication check)", tt.wantExact)
 			}
 		})
 	}
