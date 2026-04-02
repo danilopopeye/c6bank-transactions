@@ -23,19 +23,6 @@ func ParseFile(path string) ([]Transaction, error) {
 	ext := strings.ToLower(filepath.Ext(name))
 
 	switch ext {
-	case ".pdf":
-		stat, err := f.Stat()
-		if err != nil {
-			return nil, fmt.Errorf("stat file %s: %w", path, err)
-		}
-
-		lines, err := scanPDFRows(f, "", stat.Size())
-		if err != nil {
-			return nil, fmt.Errorf("parse PDF %s: %w", path, err)
-		}
-
-		return linesToTypedTransactions(lines), nil
-
 	case ".csv":
 		if len(name) != 21 || !strings.HasPrefix(name, "Fatura_") {
 			return nil, fmt.Errorf("%w: %s", ErrWrongCSVFilename, name)
