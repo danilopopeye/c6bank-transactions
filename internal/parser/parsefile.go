@@ -30,7 +30,7 @@ func ParseFile(path string) ([]Transaction, error) {
 
 		reference, err := time.Parse(time.DateOnly, name[7:17])
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrWrongCSVFilename, name)
+			return nil, fmt.Errorf("invalid date in filename %s: %w", name, err)
 		}
 
 		lines, err := scanCSVRows(reference, f)
