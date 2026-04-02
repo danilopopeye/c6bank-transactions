@@ -30,6 +30,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 
