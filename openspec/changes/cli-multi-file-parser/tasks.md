@@ -7,7 +7,7 @@
 
 ## 2. CLI Entry Point
 
-- [ ] 2.1 Create `cmd/cli/main.go` with argument parsing using `flag` package (support `-o` flag for output file)
-- [ ] 2.2 Implement main logic: iterate over file args, call `ParseFile` for each (fail-fast on any error), accumulate results, deduplicate, sort chronologically, write CSV
-- [ ] 2.3 Handle edge cases: no args (usage + exit 1), missing files, unsupported formats, invalid `-o` path
+- [x] 2.1 Create `cmd/cli/main.go` with argument parsing using `flag` package (support `-o` flag for output file)
+- [x] 2.2 Implement main logic: iterate over file args, call `ParseFile` for each (fail-fast on any error), accumulate results, deduplicate, sort chronologically, write CSV
+- [x] 2.3 Handle edge cases: no args (usage + exit 1), missing files, unsupported formats, invalid `-o` path
 - [ ] 2.4 Test CLI main with no args, single file, and multiple files
