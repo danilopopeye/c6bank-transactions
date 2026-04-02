@@ -57,14 +57,14 @@ func TestRun(t *testing.T) {
 			wantOutHas: "MERCADO EXTRA",
 		},
 		{
-			name:     "multiple CSV files deduplicates",
-			args:     []string{
+			name: "multiple CSV files deduplicates",
+			args: []string{
 				filepath.Join(testdata, "Fatura_2026-01-15.csv"),
 				filepath.Join(testdata, "Fatura_2026-01-15.csv"),
 			},
 			wantCode:   0,
 			wantOutHas: "MERCADO EXTRA",
-			wantCount:  4, // same file twice, deduplicated back to 4 transactions
+			wantCount:  4,               // same file twice, deduplicated back to 4 transactions
 			wantExact:  "MERCADO EXTRA", // must appear exactly once
 		},
 	}
