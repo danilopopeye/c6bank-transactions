@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,8 +13,11 @@ import (
 )
 
 var testdata = func() string {
-	dir, _ := os.Getwd()
-	return filepath.Join(dir, "..", "..", "internal", "parser", "testdata")
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("runtime.Caller failed")
+	}
+	return filepath.Join(filepath.Dir(thisFile), "..", "..", "internal", "parser", "testdata")
 }()
 
 func TestRun(t *testing.T) {
