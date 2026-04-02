@@ -38,7 +38,11 @@ func ParseFile(path string) ([]Transaction, error) {
 			return nil, fmt.Errorf("parse CSV %s: %w", path, err)
 		}
 
-		return linesToTypedTransactions(lines), nil
+		txs, skipped := linesToTypedTransactions(lines)
+		if skipped > 0 {
+			return txs, fmt.Errorf("skipped %d transaction(s) with invalid dates in %s", skipped, path)
+		}
+		return txs, nil
 
 	case ".jpg", ".png":
 		transactions, err := ScanImage(f, false)
@@ -77,12 +81,15 @@ func Deduplicate(transactions []Transaction) []Transaction {
 }
 
 // linesToTypedTransactions converts []Line (string dates) to []Transaction (typed dates).
-func linesToTypedTransactions(lines []Line) []Transaction {
+// Returns the number of lines skipped due to invalid dates.
+func linesToTypedTransactions(lines []Line) ([]Transaction, int) {
 	transactions := make([]Transaction, 0, len(lines))
+	var skipped int
 
 	for _, l := range lines {
 		date, err := time.Parse(dateFormat, l[0])
 		if err != nil || date.IsZero() {
+			skipped++
 			continue
 		}
 
@@ -94,5 +101,5 @@ func linesToTypedTransactions(lines []Line) []Transaction {
 		})
 	}
 
-	return transactions
+	return transactions, skipped
 }
